@@ -1,0 +1,105 @@
+@authBase = http://localhost:8081
+@goalBase = http://localhost:8080
+@authToken = {{login.response.body.token}}
+@goalId = PASTE_GOAL_ID_HERE
+@contributionId = PASTE_CONTRIBUTION_ID_HERE
+
+### Healthcheck auth-service
+GET {{authBase}}/healthcheck
+
+### Healthcheck goal-service
+GET {{goalBase}}/healthcheck
+
+### 1. Register auth-service
+POST {{authBase}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "Budi",
+  "email": "budi@example.com",
+  "password": "rahasia123"
+}
+
+### 2. Login auth-service
+# @name login
+POST {{authBase}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "budi@example.com",
+  "password": "rahasia123"
+}
+
+### 3. Me auth-service
+GET {{authBase}}/api/v1/auth/me
+Authorization: Bearer {{authToken}}
+
+### 4. Create goal
+# @name createGoal
+POST {{goalBase}}/api/v1/goals
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "DP Rumah",
+  "category": "Rumah",
+  "target_amount": 100000000,
+  "current_amount": 0,
+  "target_date": "2027-12-31",
+  "expected_inflation_rate": 3,
+  "status": "active"
+}
+
+### 5. List my goals
+GET {{goalBase}}/api/v1/goals
+Authorization: Bearer {{authToken}}
+
+### 6. Get goal by ID
+GET {{goalBase}}/api/v1/goals/{{goalId}}
+Authorization: Bearer {{authToken}}
+
+### 7. Update goal
+PUT {{goalBase}}/api/v1/goals/{{goalId}}
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "title": "DP Rumah Updated",
+  "category": "Rumah",
+  "target_amount": 120000000,
+  "current_amount": 5000000,
+  "target_date": "2027-12-31",
+  "expected_inflation_rate": 3,
+  "status": "active"
+}
+
+### 8. Add contribution
+# @name addContribution
+POST {{goalBase}}/api/v1/goals/{{goalId}}/contributions
+Content-Type: application/json
+Authorization: Bearer {{authToken}}
+
+{
+  "amount": 500000,
+  "note": "Gaji Jan"
+}
+
+### 9. List contributions
+GET {{goalBase}}/api/v1/goals/{{goalId}}/contributions
+Authorization: Bearer {{authToken}}
+
+### 10. Get progress
+GET {{goalBase}}/api/v1/goals/{{goalId}}/progress
+Authorization: Bearer {{authToken}}
+
+### 11. Get projection
+GET {{goalBase}}/api/v1/goals/{{goalId}}/projection
+Authorization: Bearer {{authToken}}
+
+### 12. Delete contribution
+DELETE {{goalBase}}/api/v1/goals/{{goalId}}/contributions/{{contributionId}}
+Authorization: Bearer {{authToken}}
+
+### 13. Delete goal
+DELETE {{goalBase}}/api/v1/goals/{{goalId}}
+Authorization: Bearer {{authToken}}

@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: artagoal-postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: artagoal
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d artagoal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: artagoal-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: artagoal-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: "8081"
+      DATABASE_URL: "postgresql://user:password@postgres:5432/artagoal?sslmode=disable"
+      JWT_SECRET: "${JWT_SECRET:-DEV-ONLY-INSECURE-SECRET}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  goal-service:
+    build:
+      context: ./services/goal-service
+      dockerfile: Dockerfile
+    container_name: artagoal-goal-service
+    ports:
+      - "8080:8080"
+    environment:
+      HTTP_ADDR: ":8080"
+      PORT: "8080"
+      DATABASE_URL: "postgresql://user:password@postgres:5432/artagoal?sslmode=disable"
+      JWT_SECRET: "${JWT_SECRET:-DEV-ONLY-INSECURE-SECRET}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

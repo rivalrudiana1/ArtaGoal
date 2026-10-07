@@ -47,6 +47,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - auth_uploads:/app/uploads
     restart: unless-stopped
 
   goal-service:
@@ -69,3 +71,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  auth_uploads:

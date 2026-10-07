@@ -1,0 +1,188 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Camera, Loader2, PiggyBank } from 'lucide-react'
+import { toast } from 'sonner'
+import { useAuth } from '../context/AuthContext.jsx'
+import { apiErrorMessage, authFileUrl, authService } from '../services/api.js'
+
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024
+
+function initials(name) {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+export default function ProfilePage() {
+  const { user, refreshUser } = useAuth()
+  const [name, setName] = useState(user?.name ?? '')
+  const [file, setFile] = useState(null)
+  const [preview, setPreview] = useState('')
+  const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef(null)
+  const previewRef = useRef('')
+
+  useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect -- sinkronisasi nama saat profil async (/me) selesai dimuat
+    setName(user?.name ?? '')
+  }, [user?.name])
+
+  // Bebaskan object URL saat komponen dilepas.
+  useEffect(() => {
+    const ref = previewRef
+    return () => {
+      if (ref.current) URL.revokeObjectURL(ref.current)
+    }
+  }, [])
+
+  function setPreviewUrl(url) {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    previewRef.current = url
+    setPreview(url)
+  }
+
+  const avatarSrc = preview || authFileUrl(user?.avatar_url)
+
+  function handleFileChange(event) {
+    const picked = event.target.files?.[0]
+    if (!picked) return
+    if (!/\.jpe?g$|\.png$/i.test(picked.name)) {
+      toast.error('Avatar hanya boleh jpg/jpeg/png.')
+      return
+    }
+    if (picked.size > MAX_AVATAR_SIZE) {
+      toast.error('Ukuran avatar maksimal 2MB.')
+      return
+    }
+    setPreviewUrl(URL.createObjectURL(picked))
+    setFile(picked)
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+    if (!name.trim()) {
+      toast.error('Nama wajib diisi.')
+      return
+    }
+    setSaving(true)
+    try {
+      const formData = new FormData()
+      formData.append('name', name.trim())
+      if (file) formData.append('avatar', file)
+      await authService.updateProfile(formData)
+      await refreshUser()
+      setPreviewUrl('')
+      setFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      toast.success('Profil berhasil diperbarui!')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Gagal memperbarui profil.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <header className="border-b border-slate-800 bg-slate-900">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
+              <PiggyBank className="h-5 w-5" />
+            </span>
+            <span className="text-lg font-extrabold tracking-tight">
+              ArtaGoal
+            </span>
+          </div>
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400"
+          >
+            <ArrowLeft className="h-4 w-4" /> Dashboard
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-lg px-4 py-8">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+          <h1 className="text-xl font-extrabold tracking-tight">Profil Saya</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Perbarui nama dan foto profilmu.
+          </p>
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+            <div className="flex flex-col items-center">
+              <div className="relative">
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt="Foto profil"
+                    className="h-28 w-28 rounded-full border-2 border-emerald-500 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-500/15 text-3xl font-extrabold text-emerald-400">
+                    {initials(user?.name)}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Ubah foto profil"
+                  className="absolute -right-1 -bottom-1 flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-200 shadow transition hover:border-emerald-500 hover:text-emerald-400"
+                >
+                  <Camera className="h-4 w-4" />
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                JPG/PNG • maksimal 2MB
+              </p>
+            </div>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-slate-300">
+                Nama
+              </span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={100}
+                placeholder="Nama lengkap"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-slate-300">
+                Email
+              </span>
+              <input
+                type="email"
+                value={user?.email ?? ''}
+                disabled
+                className="w-full cursor-not-allowed rounded-lg border border-slate-800 bg-slate-800/50 px-3 py-2 text-sm text-slate-500 outline-none"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </button>
+          </form>
+        </div>
+      </main>
+    </div>
+  )
+}

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiErrorMessage } from '../services/api.js'
-import { AuthShell, Field, FormError, SubmitButton } from '../components/AuthLayout.jsx'
+import { AuthShell, Field, SubmitButton } from '../components/AuthLayout.jsx'
 
 export default function RegisterPage() {
   const { register } = useAuth()
@@ -11,22 +12,21 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
     if (password !== confirm) {
-      setError('Konfirmasi password tidak sama.')
+      toast.error('Konfirmasi password tidak sama.')
       return
     }
-    setError('')
     setLoading(true)
     try {
       await register(name.trim(), email.trim(), password)
+      toast.success('Akun berhasil dibuat! Silakan masuk.')
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(apiErrorMessage(err, 'Pendaftaran gagal. Coba lagi.'))
+      toast.error(apiErrorMessage(err, 'Pendaftaran gagal. Coba lagi.'))
     } finally {
       setLoading(false)
     }
@@ -38,7 +38,6 @@ export default function RegisterPage() {
       subtitle="Mulai rencanakan masa depan finansialmu hari ini."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormError message={error} />
         <Field
           label="Nama lengkap"
           type="text"

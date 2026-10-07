@@ -29,6 +29,8 @@ type AuthUsecase interface {
 	Login(ctx context.Context, req entity.LoginRequest) (entity.AuthResponse, error)
 	// Me mengambil profil user terautentikasi untuk endpoint GET /api/v1/auth/me.
 	Me(ctx context.Context, userID string) (entity.User, error)
+	// UpdateProfile mengubah nama dan avatar user untuk PUT /api/v1/auth/profile.
+	UpdateProfile(ctx context.Context, userID, name, avatarURL string) (entity.User, error)
 	// GenerateToken membuat JWT 24 jam dengan klaim user_id, email, exp.
 	GenerateToken(user entity.User) (string, error)
 }
@@ -161,6 +163,26 @@ func (u *authUsecase) Me(ctx context.Context, userID string) (entity.User, error
 		return entity.User{}, fmt.Errorf("usecase: Me: %w", err)
 	}
 	return user, nil
+}
+
+// UpdateProfile memvalidasi nama dan path avatar lalu mendelegasikan
+// penyimpanan ke repository.
+func (u *authUsecase) UpdateProfile(ctx context.Context, userID, name, avatarURL string) (entity.User, error) {
+	if userID == "" {
+		return entity.User{}, validationError("user_id wajib diisi")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" || utf8.RuneCountInString(name) > 100 {
+		return entity.User{}, validationError("name wajib diisi (maks 100 karakter)")
+	}
+	if len(avatarURL) > 255 {
+		return entity.User{}, validationError("avatar_url terlalu panjang (maks 255 karakter)")
+	}
+	updated, err := u.repo.UpdateProfile(ctx, userID, name, avatarURL)
+	if err != nil {
+		return entity.User{}, fmt.Errorf("usecase: UpdateProfile: %w", err)
+	}
+	return updated, nil
 }
 
 // GenerateToken membuat JWT HS256 berumur 24 jam dengan klaim

@@ -41,3 +41,11 @@ type GoalContribution struct {
 	Note      *string   `json:"note,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+// HeatmapData adalah agregasi kontribusi per hari untuk heatmap 365 hari.
+// Date berformat YYYY-MM-DD.
+type HeatmapData struct {
+	Date        string  `json:"date"`
+	Count       int     `json:"count"`
+	TotalAmount float64 `json:"total_amount"`
+}

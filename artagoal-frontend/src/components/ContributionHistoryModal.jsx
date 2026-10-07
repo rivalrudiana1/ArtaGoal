@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { History, Loader2, Trash2, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { apiErrorMessage, goalService } from '../services/api.js'
 import { formatDate, formatIDR } from '../utils/format.js'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 function formatDateTime(value) {
   if (!value) return '-'
@@ -34,7 +36,7 @@ export default function ContributionHistoryModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState('')
-  const [confirmId, setConfirmId] = useState('')
+  const [pendingDelete, setPendingDelete] = useState(null)
 
   const goalId = goal?.id
 
@@ -46,7 +48,9 @@ export default function ContributionHistoryModal({
       const { data } = await goalService.listContributions(goalId)
       setItems(normalizeContributions(data))
     } catch (err) {
-      setError(apiErrorMessage(err, 'Gagal memuat riwayat setoran.'))
+      const message = apiErrorMessage(err, 'Gagal memuat riwayat setoran.')
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -55,7 +59,7 @@ export default function ContributionHistoryModal({
   useEffect(() => {
     if (open) {
       // eslint-disable-next-line react/set-state-in-effect -- sinkronisasi fetch saat modal dibuka
-      setConfirmId('')
+      setPendingDelete(null)
       setDeletingId('')
       fetchHistory()
     }
@@ -70,7 +74,8 @@ export default function ContributionHistoryModal({
     return () => window.removeEventListener('keydown', handleKey)
   }, [open, onClose])
 
-  async function handleDelete(contributionId) {
+  async function handleDelete() {
+    const contributionId = pendingDelete?.id
     if (!goal?.id || !contributionId || deletingId) return
     setDeletingId(contributionId)
     try {
@@ -79,15 +84,16 @@ export default function ContributionHistoryModal({
         contributionId,
       )
       setItems((prev) => prev.filter((c) => c.id !== contributionId))
-      setConfirmId('')
+      setPendingDelete(null)
       // Backend DELETE mengembalikan GoalResponse terbaru (bukan envelope),
       // sedangkan POST addContribution mengembalikan { goal }. Tangani keduanya.
       const updatedGoal = data?.goal ?? data
       if (updatedGoal?.id && typeof onUpdated === 'function') {
         onUpdated(updatedGoal)
       }
+      toast.success('Transaksi setoran berhasil dibatalkan')
     } catch (err) {
-      alert(apiErrorMessage(err, 'Gagal menghapus transaksi.'))
+      toast.error(apiErrorMessage(err, 'Gagal menghapus transaksi.'))
     } finally {
       setDeletingId('')
     }
@@ -183,48 +189,15 @@ export default function ContributionHistoryModal({
                         </p>
                       )}
                     </div>
-                    {confirmId === item.id ? (
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          type="button"
-                          disabled={deletingId === item.id}
-                          onClick={() => handleDelete(item.id)}
-                          className="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
-                        >
-                          {deletingId === item.id ? (
-                            <span className="flex items-center gap-1">
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />{' '}
-                              Ya
-                            </span>
-                          ) : (
-                            'Ya, hapus'
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deletingId === item.id}
-                          onClick={() => setConfirmId('')}
-                          className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmId(item.id)}
-                        className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:border-red-200 hover:text-red-600"
-                        aria-label={`Hapus setoran ${formatIDR(item.amount)}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Hapus
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setPendingDelete(item)}
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:border-red-200 hover:text-red-600"
+                      aria-label={`Hapus setoran ${formatIDR(item.amount)}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Hapus
+                    </button>
                   </div>
-                  {confirmId === item.id && (
-                    <p className="mt-2 rounded-lg bg-red-50 px-2.5 py-1.5 text-xs text-red-700">
-                      Hapus transaksi ini? Saldo target akan berkurang otomatis.
-                    </p>
-                  )}
                 </li>
               ))}
             </ul>
@@ -239,6 +212,21 @@ export default function ContributionHistoryModal({
           Tutup
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={handleDelete}
+        title="Batalkan setoran ini?"
+        description={
+          pendingDelete
+            ? `Setoran sebesar ${formatIDR(pendingDelete.amount)} akan dihapus dan saldo target terkoreksi otomatis.`
+            : ''
+        }
+        confirmText="Ya, Hapus"
+        variant="danger"
+        isLoading={Boolean(deletingId)}
+      />
     </div>
   )
 }

@@ -30,6 +30,8 @@ func NewGoalHandler(uc usecase.GoalUsecase) *GoalHandler {
 func (h *GoalHandler) RegisterGoalRoutes(r chi.Router) {
 	r.Post("/api/v1/goals", h.CreateGoal)
 	r.Get("/api/v1/goals", h.GetMyGoals)
+	// Daftarkan sebelum /{id} agar "heatmap" tidak ditangkap sebagai id.
+	r.Get("/api/v1/goals/heatmap", h.HandleGetHeatmap)
 	r.Get("/api/v1/goals/{id}", h.GetGoalByID)
 	r.Get("/api/v1/users/{userID}/goals", h.GetGoalsByUser)
 	r.Put("/api/v1/goals/{id}", h.UpdateGoal)
@@ -41,6 +43,10 @@ func (h *GoalHandler) RegisterGoalRoutes(r chi.Router) {
 	r.Delete("/api/v1/goals/{id}/contributions/{contributionID}", h.DeleteContribution)
 	r.Get("/api/v1/goals/{id}/progress", h.GetProgress)
 	r.Get("/api/v1/goals/{id}/projection", h.GetProjection)
+
+	// In-app notifications (dibuat oleh reminder worker).
+	r.Get("/api/v1/notifications", h.GetNotifications)
+	r.Put("/api/v1/notifications/{id}/read", h.MarkNotificationRead)
 }
 
 // ---- DTO ----
@@ -114,7 +120,8 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 func statusForError(err error) int {
 	switch {
 	case errors.Is(err, entity.ErrGoalNotFound),
-		errors.Is(err, entity.ErrContributionNotFound):
+		errors.Is(err, entity.ErrContributionNotFound),
+		errors.Is(err, entity.ErrNotificationNotFound):
 		return http.StatusNotFound
 	case errors.Is(err, usecase.ErrValidation):
 		return http.StatusBadRequest
@@ -634,5 +641,124 @@ func (h *GoalHandler) GetProjection(w http.ResponseWriter, r *http.Request) {
 		MonthsRemaining: p.MonthsRemaining, PercentComplete: p.PercentComplete,
 		RemainingAmount: p.RemainingAmount, IsAchieved: p.IsAchieved, TargetDate: g.TargetDate,
 	})
+}
+
+// ---- heatmap ----
+
+// HeatmapResponse adalah satu titik agregasi harian untuk heatmap kontribusi.
+type HeatmapResponse struct {
+	Date        string  `json:"date"`
+	Count       int     `json:"count"`
+	TotalAmount float64 `json:"total_amount"`
+}
+
+// HandleGetHeatmap menangani GET /api/v1/goals/heatmap.
+// Mengembalikan agregasi jumlah dan total setoran per hari dalam
+// 365 hari terakhir milik user terautentikasi (dari JWT context).
+func (h *GoalHandler) HandleGetHeatmap(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	items, err := h.uc.GetHeatmapData(r.Context(), userID)
+	if err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal mengambil data heatmap")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	resp := make([]HeatmapResponse, 0, len(items))
+	for _, it := range items {
+		resp = append(resp, HeatmapResponse{
+			Date:        it.Date,
+			Count:       it.Count,
+			TotalAmount: it.TotalAmount,
+		})
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// ---- notifications ----
+
+// NotificationResponse merepresentasikan satu notifikasi in-app.
+type NotificationResponse struct {
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	GoalID    *string   `json:"goal_id,omitempty"`
+	Title     string    `json:"title"`
+	Message   string    `json:"message"`
+	IsRead    bool      `json:"is_read"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+func toNotification(n entity.Notification) NotificationResponse {
+	return NotificationResponse{
+		ID: n.ID, UserID: n.UserID, GoalID: n.GoalID,
+		Title: n.Title, Message: n.Message,
+		IsRead: n.IsRead, CreatedAt: n.CreatedAt,
+	}
+}
+
+// GetNotifications menangani GET /api/v1/notifications.
+// Mengembalikan daftar notifikasi milik user terautentikasi (terbaru dulu).
+func (h *GoalHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	items, err := h.uc.GetNotifications(r.Context(), userID)
+	if err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal mengambil notifikasi")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	resp := make([]NotificationResponse, 0, len(items))
+	for _, n := range items {
+		resp = append(resp, toNotification(n))
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// MarkNotificationRead menangani PUT /api/v1/notifications/{id}/read.
+// Menandai notifikasi milik user terautentikasi sebagai telah dibaca
+// (404 bila id tidak ada atau bukan milik user).
+func (h *GoalHandler) MarkNotificationRead(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuth(w, r)
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "id wajib diisi")
+		return
+	}
+
+	updated, err := h.uc.MarkNotificationRead(r.Context(), userID, id)
+	if err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal menandai notifikasi")
+			return
+		}
+		if status == http.StatusNotFound {
+			writeError(w, status, "notifikasi tidak ditemukan")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toNotification(updated))
 }
 

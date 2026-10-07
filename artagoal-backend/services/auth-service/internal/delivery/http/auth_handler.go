@@ -1,9 +1,18 @@
 package httphandler
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -30,6 +39,7 @@ func (h *AuthHandler) RegisterAuthRoutes(r chi.Router, auth func(http.Handler) h
 	r.Post("/api/v1/auth/register", h.Register)
 	r.Post("/api/v1/auth/login", h.Login)
 	r.With(auth).Get("/api/v1/auth/me", h.Me)
+	r.With(auth).Put("/api/v1/auth/profile", h.HandleUpdateProfile)
 }
 
 // ---- helpers ----
@@ -136,5 +146,133 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, user.ToInfo())
+}
+
+// Batas ukuran file avatar: 2 MiB.
+const maxAvatarSize = 2 << 20
+
+// allowedAvatarExt adalah ekstensi gambar yang diizinkan untuk avatar.
+var allowedAvatarExt = map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+
+// uniqueAvatarName membuat nama file unik dari timestamp + acak,
+// mempertahankan ekstensi asli yang sudah tervalidasi.
+func uniqueAvatarName(ext string) string {
+	var rnd [3]byte
+	if _, err := rand.Read(rnd[:]); err != nil {
+		return fmt.Sprintf("avatar-%d%s", time.Now().UnixNano(), ext)
+	}
+	return fmt.Sprintf("avatar-%d-%s%s", time.Now().UnixNano(), hex.EncodeToString(rnd[:]), ext)
+}
+
+// HandleUpdateProfile menangani PUT /api/v1/auth/profile -> 200 OK + profil terbaru.
+// Menerima multipart/form-data dengan field teks "name" dan file opsional "avatar".
+// File divalidasi maksimal 2MB dengan ekstensi jpg/jpeg/png, disimpan ke
+// uploads/avatars dengan nama unik, lalu path statisnya disimpan ke database.
+func (h *AuthHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized: token tidak ada atau tidak valid")
+		return
+	}
+
+	// Batasi total body agar file raksasa ditolak sejak awal.
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
+	if err := r.ParseMultipartForm(maxAvatarSize); err != nil {
+		writeError(w, http.StatusBadRequest, "body multipart tidak valid: "+err.Error())
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("name"))
+
+	avatarURL := ""
+	file, header, err := r.FormFile("avatar")
+	switch {
+	case err == nil:
+		defer file.Close()
+		saved, ferr := saveAvatarFile(file, header.Filename, header.Size)
+		if ferr != nil {
+			writeError(w, http.StatusBadRequest, ferr.Error())
+			return
+		}
+		avatarURL = saved
+	case errors.Is(err, http.ErrMissingFile):
+		// Tanpa file baru: pertahankan avatar yang sudah ada.
+		current, cerr := h.uc.Me(r.Context(), userID)
+		if cerr != nil {
+			status := statusForError(cerr)
+			if status == http.StatusInternalServerError {
+				writeError(w, status, "gagal mengambil profil")
+				return
+			}
+			writeError(w, status, cerr.Error())
+			return
+		}
+		avatarURL = current.AvatarURL
+	default:
+		writeError(w, http.StatusBadRequest, "field avatar tidak valid: "+err.Error())
+		return
+	}
+
+	updated, err := h.uc.UpdateProfile(r.Context(), userID, name, avatarURL)
+	if err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal memperbarui profil")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, updated.ToInfo())
+}
+
+// saveAvatarFile memvalidasi ukuran (maks 2MB), ekstensi (jpg/jpeg/png),
+// dan isi gambar (jpeg/png), lalu menyimpannya ke uploads/avatars dengan
+// nama unik. Mengembalikan path statis untuk disimpan ke database.
+func saveAvatarFile(src multipart.File, filename string, size int64) (string, error) {
+	if size > maxAvatarSize {
+		return "", errors.New("ukuran avatar maksimal 2MB")
+	}
+	ext := strings.ToLower(filepath.Ext(filename))
+	if !allowedAvatarExt[ext] {
+		return "", errors.New("ekstensi avatar hanya boleh jpg/jpeg/png")
+	}
+
+	// Sniff 512 byte pertama agar isi benar-benar gambar jpeg/png.
+	head := make([]byte, 512)
+	n, _ := io.ReadFull(src, head)
+	switch http.DetectContentType(head[:n]) {
+	case "image/jpeg", "image/png":
+	default:
+		return "", errors.New("isi file avatar harus gambar jpeg/png")
+	}
+
+	if err := os.MkdirAll("uploads/avatars", 0o755); err != nil {
+		return "", errors.New("gagal menyiapkan direktori avatar")
+	}
+
+	name := uniqueAvatarName(ext)
+	dst, err := os.Create(filepath.Join("uploads", "avatars", name))
+	if err != nil {
+		return "", errors.New("gagal menyimpan file avatar")
+	}
+	defer dst.Close()
+
+	if _, err := dst.Write(head[:n]); err != nil {
+		_ = os.Remove(dst.Name())
+		return "", errors.New("gagal menyimpan file avatar")
+	}
+	written, err := io.Copy(dst, src)
+	if err != nil {
+		_ = os.Remove(dst.Name())
+		return "", errors.New("gagal menyimpan file avatar")
+	}
+	if int64(n)+written > maxAvatarSize {
+		_ = os.Remove(dst.Name())
+		return "", errors.New("ukuran avatar maksimal 2MB")
+	}
+
+	return "/uploads/avatars/" + name, nil
 }
 

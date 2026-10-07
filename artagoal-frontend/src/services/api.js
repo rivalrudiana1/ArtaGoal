@@ -61,6 +61,18 @@ export const authService = {
   register: (payload) => authApi.post('/auth/register', payload),
   login: (payload) => authApi.post('/auth/login', payload),
   me: () => authApi.get('/auth/me'),
+  // Header Content-Type multipart/form-data beserta boundary diatur
+  // otomatis oleh axios saat body berupa FormData — jangan di-set manual
+  // agar browser menyisipkan boundary yang benar.
+  updateProfile: (formData) => authApi.put('/auth/profile', formData),
+}
+
+/** URL absolut file statis auth-service (mis. avatar) dari path relatifnya. */
+export function authFileUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  const origin = AUTH_BASE_URL.replace(/\/api\/v1\/?$/, '')
+  return `${origin}${path.startsWith('/') ? path : `/${path}`}`
 }
 
 export const goalService = {
@@ -77,6 +89,9 @@ export const goalService = {
     goalApi.delete(`/goals/${goalId}/contributions/${contributionId}`),
   getProgress: (goalId) => goalApi.get(`/goals/${goalId}/progress`),
   getProjection: (goalId) => goalApi.get(`/goals/${goalId}/projection`),
+  getHeatmap: () => goalApi.get('/goals/heatmap'),
+  getNotifications: () => goalApi.get('/notifications'),
+  markAsRead: (id) => goalApi.put(`/notifications/${id}/read`),
 }
 
 /** Ambil pesan error backend {error: "..."} atau fallback generik. */

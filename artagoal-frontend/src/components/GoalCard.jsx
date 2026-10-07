@@ -9,9 +9,11 @@ import {
   Trophy,
   X,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { apiErrorMessage, goalService } from '../services/api.js'
 import { formatDate, formatIDR, formatPercent } from '../utils/format.js'
 import ContributionHistoryModal from './ContributionHistoryModal.jsx'
+import ConfirmModal from './ui/ConfirmModal.jsx'
 
 const STATUS_STYLE = {
   active: 'bg-emerald-100 text-emerald-800',
@@ -22,11 +24,11 @@ const STATUS_STYLE = {
 export default function GoalCard({ goal, onContributed, onDeleted }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [error, setError] = useState('')
 
   const percent = formatPercent(goal.current_amount, goal.target_amount)
   const futureTarget = goal.projection?.future_target_amount
@@ -34,10 +36,9 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
 
   async function handleContribute(event) {
     event.preventDefault()
-    setError('')
     const value = Number(amount)
     if (!Number.isFinite(value) || value <= 0) {
-      setError('Nominal setoran harus lebih dari 0.')
+      toast.error('Nominal setoran harus lebih dari 0.')
       return
     }
     setSaving(true)
@@ -50,21 +51,23 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
       setModalOpen(false)
       setAmount('')
       setNote('')
+      toast.success('Setoran berhasil ditambahkan! Progres Anda meningkat 🎉')
     } catch (err) {
-      setError(apiErrorMessage(err, 'Gagal menyimpan setoran.'))
+      toast.error(apiErrorMessage(err, 'Gagal menyimpan setoran.'))
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete() {
-    if (!window.confirm(`Hapus target "${goal.title}"?`)) return
     setDeleting(true)
     try {
       await goalService.deleteGoal(goal.id)
+      setDeleteOpen(false)
+      toast.success('Target keuangan berhasil dihapus!')
       onDeleted(goal.id)
     } catch (err) {
-      alert(apiErrorMessage(err, 'Gagal menghapus target.'))
+      toast.error(apiErrorMessage(err, 'Gagal menghapus target.'))
     } finally {
       setDeleting(false)
     }
@@ -136,10 +139,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
       <div className="mt-4 flex gap-2">
         <button
           type="button"
-          onClick={() => {
-            setError('')
-            setModalOpen(true)
-          }}
+          onClick={() => setModalOpen(true)}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
         >
           <Plus className="h-4 w-4" /> Setor
@@ -153,7 +153,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
         </button>
         <button
           type="button"
-          onClick={handleDelete}
+          onClick={() => setDeleteOpen(true)}
           disabled={deleting}
           className="flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-slate-500 transition hover:border-red-200 hover:text-red-600 disabled:opacity-50"
           aria-label={`Hapus ${goal.title}`}
@@ -161,6 +161,17 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleDelete}
+        title={`Hapus "${goal.title}"?`}
+        description="Target dan seluruh riwayat setorannya akan dihapus permanen. Tindakan ini tidak dapat dibatalkan."
+        confirmText="Ya, Hapus"
+        variant="danger"
+        isLoading={deleting}
+      />
 
       <ContributionHistoryModal
         goal={goal}
@@ -186,11 +197,6 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
               </button>
             </div>
             <form onSubmit={handleContribute} className="mt-4 space-y-3">
-              {error && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                  {error}
-                </p>
-              )}
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">
                   Nominal (Rp)

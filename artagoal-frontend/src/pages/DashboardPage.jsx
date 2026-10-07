@@ -11,12 +11,23 @@ import {
   Target,
   Wallet,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import GoalCard from '../components/GoalCard.jsx'
+import ContributionHeatmap from '../components/ContributionHeatmap.jsx'
 import GoalProjectionChart from '../components/GoalProjectionChart.jsx'
+import NotificationBell from '../components/NotificationBell.jsx'
+import ConfirmModal from '../components/ui/ConfirmModal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { apiErrorMessage, goalService } from '../services/api.js'
+import { apiErrorMessage, authFileUrl, goalService } from '../services/api.js'
 import { formatIDR, formatPercent, greeting } from '../utils/format.js'
 import { exportGoalsToCsv } from '../utils/exportCsv.js'
+
+function userInitials(name) {
+  const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
 
 const CATEGORY_OPTIONS = [
   'Semua',
@@ -85,6 +96,7 @@ export default function DashboardPage() {
   const [categoryFilter, setCategoryFilter] = useState('Semua')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('deadline')
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   const fetchGoals = useCallback(async () => {
     setLoading(true)
@@ -93,7 +105,9 @@ export default function DashboardPage() {
       const { data } = await goalService.listMyGoals()
       setGoals(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(apiErrorMessage(err, 'Gagal memuat daftar target.'))
+      const message = apiErrorMessage(err, 'Gagal memuat daftar target.')
+      setError(message)
+      toast.error(message)
     } finally {
       setLoading(false)
     }
@@ -170,7 +184,18 @@ export default function DashboardPage() {
   }
 
   function handleExport() {
-    exportGoalsToCsv(goals, 'artagoal-laporan.csv')
+    try {
+      exportGoalsToCsv(goals, 'artagoal-laporan.csv')
+      toast.success('Laporan (.csv) berhasil diunduh!')
+    } catch {
+      toast.error('Gagal membuat laporan (.csv). Coba lagi.')
+    }
+  }
+
+  function handleLogout() {
+    setLogoutOpen(false)
+    logout()
+    toast.info('Anda telah keluar dari aplikasi')
   }
 
   return (
@@ -192,9 +217,27 @@ export default function DashboardPage() {
                 {user?.name ?? 'Sobat'}
               </span>
             </p>
+            <NotificationBell />
+            <Link
+              to="/profile"
+              title="Profil saya"
+              className="overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-emerald-500"
+            >
+              {authFileUrl(user?.avatar_url) ? (
+                <img
+                  src={authFileUrl(user?.avatar_url)}
+                  alt="Foto profil"
+                  className="h-9 w-9 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-xs font-extrabold text-emerald-700">
+                  {userInitials(user?.name)}
+                </span>
+              )}
+            </Link>
             <button
               type="button"
-              onClick={logout}
+              onClick={() => setLogoutOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600"
             >
               <LogOut className="h-4 w-4" /> Keluar
@@ -202,6 +245,16 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      <ConfirmModal
+        isOpen={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+        onConfirm={handleLogout}
+        title="Keluar dari ArtaGoal?"
+        description="Apakah Anda yakin ingin keluar dari akun ArtaGoal?"
+        confirmText="Ya, Keluar"
+        variant="warning"
+      />
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -251,6 +304,8 @@ export default function DashboardPage() {
             accent="text-slate-900"
           />
         </section>
+
+        <ContributionHeatmap />
 
         <GoalProjectionChart goals={goals} />
 

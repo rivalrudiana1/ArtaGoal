@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calculator, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { apiErrorMessage, goalService } from '../services/api.js'
-import { FormError, SubmitButton } from '../components/AuthLayout.jsx'
+import { SubmitButton } from '../components/AuthLayout.jsx'
 import { formatIDR } from '../utils/format.js'
 
 const CATEGORIES = [
@@ -27,7 +28,6 @@ export default function NewGoalPage() {
   const [currentAmount, setCurrentAmount] = useState('')
   const [targetDate, setTargetDate] = useState('')
   const [inflation, setInflation] = useState('3')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const simulation = useMemo(() => {
@@ -54,10 +54,9 @@ export default function NewGoalPage() {
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setError('')
     const target = Number(targetAmount)
     if (!Number.isFinite(target) || target <= 0) {
-      setError('Target dana harus lebih dari 0.')
+      toast.error('Target dana harus lebih dari 0.')
       return
     }
     setLoading(true)
@@ -70,9 +69,10 @@ export default function NewGoalPage() {
         target_date: targetDate || undefined,
         expected_inflation_rate: Number(inflation) || 0,
       })
+      toast.success('Target baru berhasil disimpan! Mari konsisten menabung.')
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(apiErrorMessage(err, 'Gagal membuat target.'))
+      toast.error(apiErrorMessage(err, 'Gagal membuat target.'))
     } finally {
       setLoading(false)
     }
@@ -95,7 +95,6 @@ export default function NewGoalPage() {
             Tentukan impian finansialmu beserta estimasi inflasinya.
           </p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <FormError message={error} />
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-slate-700">
                 Nama target

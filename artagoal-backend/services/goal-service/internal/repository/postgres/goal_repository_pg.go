@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"artagoal/goal-service/internal/domain/entity"
 	"artagoal/goal-service/internal/repository"
@@ -361,5 +362,186 @@ func (r *GoalPostgresRepository) DeleteContribution(ctx context.Context, contrib
 		return entity.Goal{}, fmt.Errorf("postgres: DeleteContribution commit: %w", err)
 	}
 	return g, nil
+}
+
+// GetContributionHeatmap mengambil agregasi jumlah dan total setoran
+// per hari dalam 1 tahun terakhir untuk satu user.
+func (r *GoalPostgresRepository) GetContributionHeatmap(ctx context.Context, userID string) ([]entity.HeatmapData, error) {
+	const query = `
+		SELECT c.created_at::date as date, COUNT(c.id) as count, COALESCE(SUM(c.amount), 0) as total_amount
+		FROM goal_contributions c
+		JOIN goals g ON c.goal_id = g.id
+		WHERE g.user_id = $1 AND c.created_at >= NOW() - INTERVAL '365 days'
+		GROUP BY c.created_at::date
+		ORDER BY date ASC;`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: GetContributionHeatmap %s: %w", userID, err)
+	}
+	defer rows.Close()
+
+	out := make([]entity.HeatmapData, 0)
+	for rows.Next() {
+		var day time.Time
+		var h entity.HeatmapData
+		var total sql.NullFloat64
+		if err := rows.Scan(&day, &h.Count, &total); err != nil {
+			return nil, fmt.Errorf("postgres: GetContributionHeatmap %s scan: %w", userID, err)
+		}
+		h.Date = day.Format("2006-01-02")
+		if total.Valid {
+			h.TotalAmount = total.Float64
+		}
+		out = append(out, h)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("postgres: GetContributionHeatmap %s rows: %w", userID, err)
+	}
+
+	return out, nil
+}
+
+// ---- notifications ----
+
+const notificationColumns = `id, user_id, goal_id, title, message, is_read, created_at`
+
+// scanNotification memetakan satu baris notifications ke entity,
+// menangani goal_id yang NULL secara aman.
+func scanNotification(s scanner) (entity.Notification, error) {
+	var n entity.Notification
+	var goalID sql.NullString
+	if err := s.Scan(
+		&n.ID,
+		&n.UserID,
+		&goalID,
+		&n.Title,
+		&n.Message,
+		&n.IsRead,
+		&n.CreatedAt,
+	); err != nil {
+		return entity.Notification{}, err
+	}
+	if goalID.Valid {
+		g := goalID.String
+		n.GoalID = &g
+	}
+	return n, nil
+}
+
+// ListActiveGoalsDueWithin mengembalikan goal active yang deadline-nya
+// (target_date) berada di antara sekarang dan days hari ke depan.
+func (r *GoalPostgresRepository) ListActiveGoalsDueWithin(ctx context.Context, days int) ([]entity.Goal, error) {
+	query := `SELECT ` + goalColumns + ` FROM goals
+		WHERE status = 'active'
+		  AND target_date IS NOT NULL
+		  AND target_date >= NOW()
+		  AND target_date <= NOW() + ($1 * INTERVAL '1 day')
+		ORDER BY target_date ASC`
+
+	rows, err := r.db.QueryContext(ctx, query, days)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: ListActiveGoalsDueWithin: %w", err)
+	}
+	defer rows.Close()
+
+	goals := make([]entity.Goal, 0)
+	for rows.Next() {
+		g, err := scanGoal(rows)
+		if err != nil {
+			return nil, fmt.Errorf("postgres: ListActiveGoalsDueWithin scan: %w", err)
+		}
+		goals = append(goals, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("postgres: ListActiveGoalsDueWithin rows: %w", err)
+	}
+
+	return goals, nil
+}
+
+// CreateNotification menyimpan satu notifikasi in-app.
+func (r *GoalPostgresRepository) CreateNotification(ctx context.Context, n entity.Notification) (entity.Notification, error) {
+	const query = `
+		INSERT INTO notifications (user_id, goal_id, title, message)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at`
+
+	var goalID any
+	if n.GoalID != nil {
+		goalID = *n.GoalID
+	}
+
+	if err := r.db.QueryRowContext(ctx, query,
+		n.UserID,
+		goalID,
+		n.Title,
+		n.Message,
+	).Scan(&n.ID, &n.CreatedAt); err != nil {
+		return entity.Notification{}, fmt.Errorf("postgres: CreateNotification: %w", err)
+	}
+
+	return n, nil
+}
+
+// HasRecentNotification melaporkan apakah sudah ada notifikasi berjudul
+// title untuk goal tersebut dalam days hari terakhir.
+func (r *GoalPostgresRepository) HasRecentNotification(ctx context.Context, goalID, title string, days int) (bool, error) {
+	const query = `SELECT EXISTS(
+		SELECT 1 FROM notifications
+		WHERE goal_id = $1 AND title = $2
+		  AND created_at >= NOW() - ($3 * INTERVAL '1 day')
+	)`
+
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, query, goalID, title, days).Scan(&exists); err != nil {
+		return false, fmt.Errorf("postgres: HasRecentNotification %s: %w", goalID, err)
+	}
+
+	return exists, nil
+}
+
+// GetNotificationsByUserID mengembalikan notifikasi milik user (terbaru dulu).
+func (r *GoalPostgresRepository) GetNotificationsByUserID(ctx context.Context, userID string) ([]entity.Notification, error) {
+	query := `SELECT ` + notificationColumns + ` FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: GetNotificationsByUserID %s: %w", userID, err)
+	}
+	defer rows.Close()
+
+	out := make([]entity.Notification, 0)
+	for rows.Next() {
+		n, err := scanNotification(rows)
+		if err != nil {
+			return nil, fmt.Errorf("postgres: GetNotificationsByUserID %s scan: %w", userID, err)
+		}
+		out = append(out, n)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("postgres: GetNotificationsByUserID %s rows: %w", userID, err)
+	}
+
+	return out, nil
+}
+
+// MarkNotificationAsRead menandai notifikasi milik user sebagai dibaca.
+// Klausa user_id mencegah user menandai notifikasi milik user lain;
+// 0 baris terpengaruh dipetakan ke ErrNotificationNotFound.
+func (r *GoalPostgresRepository) MarkNotificationAsRead(ctx context.Context, id, userID string) (entity.Notification, error) {
+	const query = `UPDATE notifications SET is_read = TRUE
+		WHERE id = $1 AND user_id = $2
+		RETURNING ` + notificationColumns
+
+	n, err := scanNotification(r.db.QueryRowContext(ctx, query, id, userID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return entity.Notification{}, fmt.Errorf("postgres: MarkNotificationAsRead %s: %w", id, entity.ErrNotificationNotFound)
+		}
+		return entity.Notification{}, fmt.Errorf("postgres: MarkNotificationAsRead %s: %w", id, err)
+	}
+
+	return n, nil
 }
 

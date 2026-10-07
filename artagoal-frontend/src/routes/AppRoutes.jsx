@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import DashboardPage from '../pages/DashboardPage.jsx'
 import LoginPage from '../pages/LoginPage.jsx'
 import NewGoalPage from '../pages/NewGoalPage.jsx'
+import ProfilePage from '../pages/ProfilePage.jsx'
 import RegisterPage from '../pages/RegisterPage.jsx'
 
 function FullPageLoader() {
@@ -71,6 +72,14 @@ export default function AppRoutes() {
         element={
           <ProtectedRoute>
             <NewGoalPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

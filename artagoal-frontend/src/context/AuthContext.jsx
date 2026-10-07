@@ -84,6 +84,13 @@ export function AuthProvider({ children }) {
     [],
   )
 
+  // Memuat ulang profil dari /auth/me (mis. setelah update profil/avatar).
+  const refreshUser = useCallback(async () => {
+    const { data } = await authService.me()
+    setUser(data)
+    return data
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
@@ -93,8 +100,9 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      refreshUser,
     }),
-    [user, token, loading, login, register, logout],
+    [user, token, loading, login, register, logout, refreshUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

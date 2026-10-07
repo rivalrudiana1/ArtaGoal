@@ -29,6 +29,20 @@ type GoalUsecase interface {
 	GetContributionByID(ctx context.Context, id string) (entity.GoalContribution, error)
 	DeleteContribution(ctx context.Context, contributionID string) (entity.Goal, error)
 
+	// GetHeatmapData mengembalikan agregasi kontribusi per hari
+	// dalam 1 tahun terakhir untuk heatmap kontribusi.
+	GetHeatmapData(ctx context.Context, userID string) ([]entity.HeatmapData, error)
+
+	// --- notifications ---
+	// GetNotifications mengembalikan daftar notifikasi milik user.
+	GetNotifications(ctx context.Context, userID string) ([]entity.Notification, error)
+	// MarkNotificationRead menandai satu notifikasi milik user sebagai dibaca.
+	MarkNotificationRead(ctx context.Context, userID, notificationID string) (entity.Notification, error)
+	// RunDeadlineReminderCheck memindai goal active yang tenggatnya <= 30 hari
+	// dengan progres < 80% lalu membuat notifikasi peringatan (anti-duplikat
+	// 7 hari). Mengembalikan jumlah notifikasi yang dibuat.
+	RunDeadlineReminderCheck(ctx context.Context) (int, error)
+
 	// CalculateInflationProjection menghitung proyeksi anti-inflasi:
 	//   FV = PV * (1 + i)^n, dengan i = inflationRate/100 (desimal per tahun),
 	//   n  = durasi tahun dari sekarang ke targetDate.
@@ -301,6 +315,125 @@ func (u *goalUsecase) DeleteContribution(ctx context.Context, contributionID str
 		return entity.Goal{}, fmt.Errorf("usecase: DeleteContribution: %w", err)
 	}
 	return g, nil
+}
+
+// GetHeatmapData memvalidasi user lalu mendelegasikan agregasi
+// heatmap ke repository.
+func (u *goalUsecase) GetHeatmapData(ctx context.Context, userID string) ([]entity.HeatmapData, error) {
+	if userID == "" {
+		return nil, validationError("user_id wajib diisi")
+	}
+	out, err := u.repo.GetContributionHeatmap(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("usecase: GetHeatmapData: %w", err)
+	}
+	if out == nil {
+		out = []entity.HeatmapData{}
+	}
+	return out, nil
+}
+
+// Batas kriteria pengingat tenggat oleh reminder worker.
+const (
+	// reminderDueDays adalah jarak tenggat maksimal agar diingatkan.
+	reminderDueDays = 30
+	// reminderMinProgress adalah progres minimal agar TIDAK diingatkan.
+	reminderMinProgress = 80.0
+	// reminderDedupDays adalah jendela anti-duplikat notifikasi serupa.
+	reminderDedupDays = 7
+)
+
+// reminderTitle adalah judul notifikasi peringatan tenggat.
+const reminderTitle = "🚨 Peringatan Tenggat Target"
+
+// shortPercent memformat persen ringkas: bulat tanpa desimal,
+// selain itu satu angka desimal (mis. 45% atau 45.5%).
+func shortPercent(p float64) string {
+	if p == math.Trunc(p) {
+		return fmt.Sprintf("%.0f", p)
+	}
+	return fmt.Sprintf("%.1f", p)
+}
+
+// GetNotifications mengembalikan daftar notifikasi milik satu user.
+func (u *goalUsecase) GetNotifications(ctx context.Context, userID string) ([]entity.Notification, error) {
+	if userID == "" {
+		return nil, validationError("user_id wajib diisi")
+	}
+	out, err := u.repo.GetNotificationsByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("usecase: GetNotifications: %w", err)
+	}
+	if out == nil {
+		out = []entity.Notification{}
+	}
+	return out, nil
+}
+
+// MarkNotificationRead menandai satu notifikasi milik user sebagai dibaca.
+func (u *goalUsecase) MarkNotificationRead(ctx context.Context, userID, notificationID string) (entity.Notification, error) {
+	if userID == "" {
+		return entity.Notification{}, validationError("user_id wajib diisi")
+	}
+	if notificationID == "" {
+		return entity.Notification{}, validationError("notification id wajib diisi")
+	}
+	n, err := u.repo.MarkNotificationAsRead(ctx, notificationID, userID)
+	if err != nil {
+		return entity.Notification{}, fmt.Errorf("usecase: MarkNotificationRead: %w", err)
+	}
+	return n, nil
+}
+
+// RunDeadlineReminderCheck memindai goal active bertenggat <= 30 hari yang
+// progresnya masih < 80%, lalu membuat satu notifikasi peringatan per goal
+// (dilewati bila notifikasi serupa sudah ada dalam 7 hari terakhir).
+func (u *goalUsecase) RunDeadlineReminderCheck(ctx context.Context) (int, error) {
+	goals, err := u.repo.ListActiveGoalsDueWithin(ctx, reminderDueDays)
+	if err != nil {
+		return 0, fmt.Errorf("usecase: RunDeadlineReminderCheck list: %w", err)
+	}
+
+	now := u.now()
+	created := 0
+	for _, g := range goals {
+		if g.TargetDate == nil || g.TargetAmount <= 0 {
+			continue
+		}
+		daysLeft := int(math.Ceil(g.TargetDate.Sub(now).Hours() / 24))
+		if daysLeft <= 0 {
+			continue
+		}
+		percent := g.CurrentAmount / g.TargetAmount * 100
+		if percent >= reminderMinProgress {
+			continue
+		}
+
+		recent, err := u.repo.HasRecentNotification(ctx, g.ID, reminderTitle, reminderDedupDays)
+		if err != nil {
+			return created, fmt.Errorf("usecase: RunDeadlineReminderCheck dedup %s: %w", g.ID, err)
+		}
+		if recent {
+			continue
+		}
+
+		message := fmt.Sprintf(
+			"Target '%s' tinggal %d hari lagi, namun saldo Anda baru mencapai %s%%. Segera tambah setoran!",
+			g.Title, daysLeft, shortPercent(percent),
+		)
+		goalID := g.ID
+		if _, err := u.repo.CreateNotification(ctx, entity.Notification{
+			UserID:  g.UserID,
+			GoalID:  &goalID,
+			Title:   reminderTitle,
+			Message: message,
+		}); err != nil {
+			return created, fmt.Errorf("usecase: RunDeadlineReminderCheck create %s: %w", g.ID, err)
+		}
+		created++
+	}
+
+	return created, nil
 }
 
 // GoalProgress menghitung persen tercapai, sisa, dan proyeksi inflasi.

@@ -63,6 +63,9 @@ func main() {
 		})
 	})
 
+	// Publik: file avatar yang diunggah user agar bisa diakses frontend.
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+
 	// Register & login publik; /me dilindungi middleware JWT di dalam handler.
 	authHandler.RegisterAuthRoutes(r, authmw.AuthMiddleware(jwtSecret))
 

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiErrorMessage } from '../services/api.js'
-import { AuthShell, Field, FormError, SubmitButton } from '../components/AuthLayout.jsx'
+import { AuthShell, Field, SubmitButton } from '../components/AuthLayout.jsx'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -11,18 +12,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
-    setError('')
     setLoading(true)
     try {
-      await login(email.trim(), password)
+      const user = await login(email.trim(), password)
+      toast.success(`Selamat datang kembali, ${user?.name ?? 'Sobat'}!`)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(apiErrorMessage(err, 'Email atau password salah.'))
+      toast.error(apiErrorMessage(err, 'Email atau password salah.'))
     } finally {
       setLoading(false)
     }
@@ -34,7 +34,6 @@ export default function LoginPage() {
       subtitle="Masuk untuk melanjutkan perjalanan finansialmu."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <FormError message={error} />
         <Field
           label="Email"
           type="email"

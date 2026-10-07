@@ -33,22 +33,28 @@ type scanner interface {
 }
 
 // scanUser memetakan satu baris users ke entity.User.
+// avatar_url dibaca NullString agar aman bila berisi NULL (baris lama).
 func scanUser(s scanner) (entity.User, error) {
 	var u entity.User
+	var avatar sql.NullString
 	if err := s.Scan(
 		&u.ID,
 		&u.Name,
 		&u.Email,
 		&u.PasswordHash,
+		&avatar,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	); err != nil {
 		return entity.User{}, err
 	}
+	if avatar.Valid {
+		u.AvatarURL = avatar.String
+	}
 	return u, nil
 }
 
-const userColumns = `id, name, email, password_hash, created_at, updated_at`
+const userColumns = `id, name, email, password_hash, avatar_url, created_at, updated_at`
 
 // mapError memetakan error driver ke sentinel domain.
 func mapError(op, key string, err error) error {
@@ -101,5 +107,29 @@ func (r *UserPostgresRepository) GetUserByID(ctx context.Context, id string) (en
 		return entity.User{}, mapError("GetUserByID", id, err)
 	}
 	return user, nil
+}
+
+// UpdateProfile memperbarui nama dan avatar user, lalu mengembalikan
+// entity terbaru. Mengembalikan ErrUserNotFound bila id tidak ada.
+func (r *UserPostgresRepository) UpdateProfile(ctx context.Context, id, name, avatarURL string) (entity.User, error) {
+	const query = `UPDATE users SET name = $1, avatar_url = $2 WHERE id = $3`
+
+	res, err := r.db.ExecContext(ctx, query, name, avatarURL, id)
+	if err != nil {
+		return entity.User{}, mapError("UpdateProfile", id, err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return entity.User{}, fmt.Errorf("postgres: UpdateProfile %s rows affected: %w", id, err)
+	}
+	if affected == 0 {
+		return entity.User{}, fmt.Errorf("postgres: UpdateProfile %s: %w", id, entity.ErrUserNotFound)
+	}
+
+	updated, err := r.GetUserByID(ctx, id)
+	if err != nil {
+		return entity.User{}, fmt.Errorf("postgres: UpdateProfile reload %s: %w", id, err)
+	}
+	return updated, nil
 }
 

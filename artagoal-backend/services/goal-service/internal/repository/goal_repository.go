@@ -26,5 +26,24 @@ type GoalRepository interface {
 	// goals.current_amount sebesar nominalnya (floor 0).
 	// Mengembalikan goal terbaru setelah penyesuaian.
 	DeleteContribution(ctx context.Context, contributionID string) (entity.Goal, error)
+
+	// GetContributionHeatmap mengembalikan agregasi jumlah dan total
+	// setoran per hari dalam 1 tahun terakhir untuk satu user.
+	GetContributionHeatmap(ctx context.Context, userID string) ([]entity.HeatmapData, error)
+
+	// --- notifications (reminder worker + in-app) ---
+	// ListActiveGoalsDueWithin mengembalikan goal berstatus active yang
+	// memiliki target_date di antara sekarang dan days hari ke depan.
+	ListActiveGoalsDueWithin(ctx context.Context, days int) ([]entity.Goal, error)
+	// CreateNotification menyimpan satu notifikasi dan mengembalikannya.
+	CreateNotification(ctx context.Context, n entity.Notification) (entity.Notification, error)
+	// HasRecentNotification melaporkan apakah sudah ada notifikasi berjudul
+	// title untuk goal tersebut dalam days hari terakhir (anti-duplikat).
+	HasRecentNotification(ctx context.Context, goalID, title string, days int) (bool, error)
+	// GetNotificationsByUserID mengembalikan notifikasi milik user (terbaru dulu).
+	GetNotificationsByUserID(ctx context.Context, userID string) ([]entity.Notification, error)
+	// MarkNotificationAsRead menandai notifikasi milik user sebagai dibaca.
+	// Mengembalikan ErrNotificationNotFound bila id tidak ada / bukan milik user.
+	MarkNotificationAsRead(ctx context.Context, id, userID string) (entity.Notification, error)
 }
 

@@ -19,6 +19,7 @@ type User struct {
 	Name         string    `json:"name"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
+	AvatarURL    string    `json:"avatar_url"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -38,9 +39,10 @@ type LoginRequest struct {
 
 // UserInfo adalah representasi publik user (tanpa password hash).
 type UserInfo struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 // AuthResponse dikembalikan setiap operasi auth yang sukses.
@@ -51,5 +53,5 @@ type AuthResponse struct {
 
 // ToInfo memetakan User ke representasi publiknya.
 func (u User) ToInfo() UserInfo {
-	return UserInfo{ID: u.ID, Name: u.Name, Email: u.Email}
+	return UserInfo{ID: u.ID, Name: u.Name, Email: u.Email, AvatarURL: u.AvatarURL}
 }

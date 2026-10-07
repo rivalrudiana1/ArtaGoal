@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -15,6 +17,7 @@ import (
 	authmw "artagoal/goal-service/internal/delivery/http/middleware"
 	"artagoal/goal-service/internal/repository/postgres"
 	"artagoal/goal-service/internal/usecase"
+	"artagoal/goal-service/internal/worker"
 	"artagoal/goal-service/pkg/database"
 )
 
@@ -36,6 +39,11 @@ func main() {
 	repo := postgres.NewGoalPostgresRepository(db)
 	uc := usecase.NewGoalUsecase(repo)
 	goalHandler := deliveryhttp.NewGoalHandler(uc)
+
+	// Background worker: cek pengingat tenggat segera saat boot,
+	// lalu berulang setiap 24 jam.
+	reminder := worker.NewReminderWorker(uc, 24*time.Hour, log.Default())
+	go reminder.Start(context.Background())
 
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger, chimiddleware.Recoverer)

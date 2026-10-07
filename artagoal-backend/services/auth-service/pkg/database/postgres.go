@@ -18,4 +18,3 @@ func NewPostgresConnection(dsn string) (*sql.DB, error) {
 	}
 	return db, nil
 }
-

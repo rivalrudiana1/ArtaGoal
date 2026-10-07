@@ -53,6 +53,17 @@ func (s *stubRepo) GetUserByID(_ context.Context, id string) (entity.User, error
 	return u, nil
 }
 
+func (s *stubRepo) UpdatePassword(_ context.Context, id, hash string) error {
+	u, ok := s.byID[id]
+	if !ok {
+		return entity.ErrUserNotFound
+	}
+	u.PasswordHash = hash
+	s.byID[id] = u
+	s.byEmail[u.Email] = u
+	return nil
+}
+
 const testSecret = "test-jwt-secret-minimal-32-karakter"
 
 func parseClaims(t *testing.T, tokenStr string) jwt.MapClaims {
@@ -168,3 +179,32 @@ func TestGenerateTokenNeedsSecret(t *testing.T) {
 	}
 }
 
+func TestChangePassword(t *testing.T) {
+	st := newStub()
+	hash, _ := bcrypt.GenerateFromPassword([]byte("lama12345"), bcrypt.MinCost)
+	st.byID["u1"] = entity.User{ID: "u1", Name: "U", Email: "u@x.com", PasswordHash: string(hash)}
+	st.byEmail["u@x.com"] = st.byID["u1"]
+	uc := NewAuthUsecase(st, testSecret)
+	ctx := context.Background()
+
+	if err := uc.ChangePassword(ctx, "u1", "lama12345", "baru12345"); err != nil {
+		t.Fatalf("ganti password gagal: %v", err)
+	}
+	// Password lama tidak berlaku lagi, yang baru berlaku.
+	if _, err := uc.Login(ctx, entity.LoginRequest{Email: "u@x.com", Password: "lama12345"}); !errors.Is(err, entity.ErrInvalidCredentials) {
+		t.Fatal("password lama harus ditolak setelah diganti")
+	}
+	if _, err := uc.Login(ctx, entity.LoginRequest{Email: "u@x.com", Password: "baru12345"}); err != nil {
+		t.Fatalf("password baru harus bisa login: %v", err)
+	}
+
+	if err := uc.ChangePassword(ctx, "u1", "salah1234", "lain12345"); err == nil {
+		t.Fatal("password lama salah harus ditolak")
+	}
+	if err := uc.ChangePassword(ctx, "u1", "baru12345", "pendek"); err == nil {
+		t.Fatal("password baru pendek harus ditolak")
+	}
+	if err := uc.ChangePassword(ctx, "u1", "baru12345", "baru12345"); err == nil {
+		t.Fatal("password sama harus ditolak")
+	}
+}

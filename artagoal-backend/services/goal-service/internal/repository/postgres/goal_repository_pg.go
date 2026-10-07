@@ -110,12 +110,12 @@ func (r *GoalPostgresRepository) GetGoalByID(ctx context.Context, id string) (en
 	return goal, nil
 }
 
-// GetGoalsByUserID mengambil semua goal milik satu user,
+// GetGoalsByUserID mengambil satu halaman goal milik satu user,
 // diurutkan dari yang terbaru.
-func (r *GoalPostgresRepository) GetGoalsByUserID(ctx context.Context, userID string) ([]entity.Goal, error) {
-	query := `SELECT ` + goalColumns + ` FROM goals WHERE user_id = $1 ORDER BY created_at DESC`
+func (r *GoalPostgresRepository) GetGoalsByUserID(ctx context.Context, userID string, limit, offset int) ([]entity.Goal, error) {
+	query := `SELECT ` + goalColumns + ` FROM goals WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.QueryContext(ctx, query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: GetGoalsByUserID %s: %w", userID, err)
 	}
@@ -134,6 +134,18 @@ func (r *GoalPostgresRepository) GetGoalsByUserID(ctx context.Context, userID st
 	}
 
 	return goals, nil
+}
+
+// CountGoalsByUserID menghitung total goal milik satu user.
+func (r *GoalPostgresRepository) CountGoalsByUserID(ctx context.Context, userID string) (int, error) {
+	const query = `SELECT COUNT(id) FROM goals WHERE user_id = $1`
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, query, userID).Scan(&total); err != nil {
+		return 0, fmt.Errorf("postgres: CountGoalsByUserID %s: %w", userID, err)
+	}
+
+	return total, nil
 }
 
 // UpdateGoal memperbarui field mutable sebuah goal dan
@@ -270,10 +282,10 @@ func (r *GoalPostgresRepository) AddContribution(ctx context.Context, goalID str
 	return c, g, nil
 }
 
-// ListContributionsByGoalID mengembalikan kontribusi dari yang terbaru.
-func (r *GoalPostgresRepository) ListContributionsByGoalID(ctx context.Context, goalID string) ([]entity.GoalContribution, error) {
+// ListContributionsByGoalID mengembalikan satu halaman kontribusi (terbaru dulu).
+func (r *GoalPostgresRepository) ListContributionsByGoalID(ctx context.Context, goalID string, limit, offset int) ([]entity.GoalContribution, error) {
 	const query = `SELECT id, goal_id, amount, note, created_at
-		FROM goal_contributions WHERE goal_id = $1 ORDER BY created_at DESC`
+		FROM goal_contributions WHERE goal_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 
 	// Pastikan goal ada agar 404 konsisten (bukan list kosong untuk id ngawur).
 	var exists bool
@@ -284,7 +296,7 @@ func (r *GoalPostgresRepository) ListContributionsByGoalID(ctx context.Context, 
 		return nil, fmt.Errorf("postgres: ListContributions goal %s: %w", goalID, entity.ErrGoalNotFound)
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, goalID)
+	rows, err := r.db.QueryContext(ctx, query, goalID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: ListContributions %s: %w", goalID, err)
 	}
@@ -302,6 +314,20 @@ func (r *GoalPostgresRepository) ListContributionsByGoalID(ctx context.Context, 
 		return nil, fmt.Errorf("postgres: ListContributions %s rows: %w", goalID, err)
 	}
 	return out, nil
+}
+
+// CountContributionsByGoalID menghitung jumlah dan total nominal setoran
+// satu goal (untuk ringkasan envelope terlepas dari halaman aktif).
+func (r *GoalPostgresRepository) CountContributionsByGoalID(ctx context.Context, goalID string) (int, float64, error) {
+	const query = `SELECT COUNT(id), COALESCE(SUM(amount), 0) FROM goal_contributions WHERE goal_id = $1`
+
+	var count int
+	var total float64
+	if err := r.db.QueryRowContext(ctx, query, goalID).Scan(&count, &total); err != nil {
+		return 0, 0, fmt.Errorf("postgres: CountContributionsByGoalID %s: %w", goalID, err)
+	}
+
+	return count, total, nil
 }
 
 // GetContributionByID mengambil satu kontribusi.
@@ -501,11 +527,11 @@ func (r *GoalPostgresRepository) HasRecentNotification(ctx context.Context, goal
 	return exists, nil
 }
 
-// GetNotificationsByUserID mengembalikan notifikasi milik user (terbaru dulu).
-func (r *GoalPostgresRepository) GetNotificationsByUserID(ctx context.Context, userID string) ([]entity.Notification, error) {
-	query := `SELECT ` + notificationColumns + ` FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`
+// GetNotificationsByUserID mengembalikan satu halaman notifikasi milik user.
+func (r *GoalPostgresRepository) GetNotificationsByUserID(ctx context.Context, userID string, limit, offset int) ([]entity.Notification, error) {
+	query := `SELECT ` + notificationColumns + ` FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.QueryContext(ctx, query, userID)
+	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("postgres: GetNotificationsByUserID %s: %w", userID, err)
 	}
@@ -524,6 +550,18 @@ func (r *GoalPostgresRepository) GetNotificationsByUserID(ctx context.Context, u
 	}
 
 	return out, nil
+}
+
+// CountNotificationsByUserID menghitung total notifikasi milik satu user.
+func (r *GoalPostgresRepository) CountNotificationsByUserID(ctx context.Context, userID string) (int, error) {
+	const query = `SELECT COUNT(id) FROM notifications WHERE user_id = $1`
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, query, userID).Scan(&total); err != nil {
+		return 0, fmt.Errorf("postgres: CountNotificationsByUserID %s: %w", userID, err)
+	}
+
+	return total, nil
 }
 
 // MarkNotificationAsRead menandai notifikasi milik user sebagai dibaca.
@@ -545,3 +583,131 @@ func (r *GoalPostgresRepository) MarkNotificationAsRead(ctx context.Context, id,
 	return n, nil
 }
 
+// ---- stats ----
+
+// ListContributionDates mengembalikan tanggal unik setoran milik user
+// (terbaru dulu) untuk kalkulasi streak.
+func (r *GoalPostgresRepository) ListContributionDates(ctx context.Context, userID string) ([]time.Time, error) {
+	const query = `
+		SELECT DISTINCT c.created_at::date AS d
+		FROM goal_contributions c
+		JOIN goals g ON c.goal_id = g.id
+		WHERE g.user_id = $1
+		ORDER BY d DESC`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: ListContributionDates %s: %w", userID, err)
+	}
+	defer rows.Close()
+
+	out := make([]time.Time, 0)
+	for rows.Next() {
+		var d time.Time
+		if err := rows.Scan(&d); err != nil {
+			return nil, fmt.Errorf("postgres: ListContributionDates %s scan: %w", userID, err)
+		}
+		out = append(out, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("postgres: ListContributionDates %s rows: %w", userID, err)
+	}
+
+	return out, nil
+}
+
+// CountContributionsByUserID menghitung total setoran milik satu user.
+func (r *GoalPostgresRepository) CountContributionsByUserID(ctx context.Context, userID string) (int, error) {
+	const query = `
+		SELECT COUNT(c.id)
+		FROM goal_contributions c
+		JOIN goals g ON c.goal_id = g.id
+		WHERE g.user_id = $1`
+
+	var total int
+	if err := r.db.QueryRowContext(ctx, query, userID).Scan(&total); err != nil {
+		return 0, fmt.Errorf("postgres: CountContributionsByUserID %s: %w", userID, err)
+	}
+
+	return total, nil
+}
+
+// ---- web push ----
+
+const pushSubscriptionColumns = `id, user_id, endpoint, p256dh, auth, created_at`
+
+func scanPushSubscription(s scanner) (entity.PushSubscription, error) {
+	var sub entity.PushSubscription
+	if err := s.Scan(
+		&sub.ID,
+		&sub.UserID,
+		&sub.Endpoint,
+		&sub.P256dh,
+		&sub.Auth,
+		&sub.CreatedAt,
+	); err != nil {
+		return entity.PushSubscription{}, err
+	}
+	return sub, nil
+}
+
+// SavePushSubscription menyimpan langganan push; endpoint yang sama
+// diperbarui (satu browser = satu baris per endpoint).
+func (r *GoalPostgresRepository) SavePushSubscription(ctx context.Context, sub entity.PushSubscription) (entity.PushSubscription, error) {
+	const query = `
+		INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (endpoint) DO UPDATE SET
+			user_id = EXCLUDED.user_id,
+			p256dh = EXCLUDED.p256dh,
+			auth = EXCLUDED.auth
+		RETURNING id, created_at`
+
+	if err := r.db.QueryRowContext(ctx, query,
+		sub.UserID,
+		sub.Endpoint,
+		sub.P256dh,
+		sub.Auth,
+	).Scan(&sub.ID, &sub.CreatedAt); err != nil {
+		return entity.PushSubscription{}, fmt.Errorf("postgres: SavePushSubscription: %w", err)
+	}
+
+	return sub, nil
+}
+
+// ListPushSubscriptionsByUserID mengembalikan langganan push milik user.
+func (r *GoalPostgresRepository) ListPushSubscriptionsByUserID(ctx context.Context, userID string) ([]entity.PushSubscription, error) {
+	query := `SELECT ` + pushSubscriptionColumns + ` FROM push_subscriptions WHERE user_id = $1 ORDER BY created_at`
+
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("postgres: ListPushSubscriptionsByUserID %s: %w", userID, err)
+	}
+	defer rows.Close()
+
+	out := make([]entity.PushSubscription, 0)
+	for rows.Next() {
+		sub, err := scanPushSubscription(rows)
+		if err != nil {
+			return nil, fmt.Errorf("postgres: ListPushSubscriptionsByUserID %s scan: %w", userID, err)
+		}
+		out = append(out, sub)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("postgres: ListPushSubscriptionsByUserID %s rows: %w", userID, err)
+	}
+
+	return out, nil
+}
+
+// DeletePushSubscription menghapus langganan push milik user.
+// Idempotent: endpoint yang tidak ada tetap sukses.
+func (r *GoalPostgresRepository) DeletePushSubscription(ctx context.Context, userID, endpoint string) error {
+	const query = `DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2`
+
+	if _, err := r.db.ExecContext(ctx, query, userID, endpoint); err != nil {
+		return fmt.Errorf("postgres: DeletePushSubscription: %w", err)
+	}
+
+	return nil
+}

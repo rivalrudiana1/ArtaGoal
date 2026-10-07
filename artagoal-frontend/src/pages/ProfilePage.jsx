@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, Camera, Loader2, PiggyBank } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 import { apiErrorMessage, authFileUrl, authService } from '../services/api.js'
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024
@@ -20,6 +21,10 @@ export default function ProfilePage() {
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState('')
   const [saving, setSaving] = useState(false)
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
   const fileInputRef = useRef(null)
   const previewRef = useRef('')
 
@@ -83,6 +88,33 @@ export default function ProfilePage() {
     }
   }
 
+  async function handlePasswordSubmit(event) {
+    event.preventDefault()
+    if (!oldPassword || !newPassword) {
+      toast.error('Password lama dan baru wajib diisi.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Konfirmasi password tidak cocok.')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      await authService.changePassword({
+        old_password: oldPassword,
+        new_password: newPassword,
+      })
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      toast.success('Password berhasil diganti!')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Gagal mengganti password.'))
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 bg-slate-900">
@@ -95,12 +127,15 @@ export default function ProfilePage() {
               ArtaGoal
             </span>
           </div>
-          <Link
-            to="/dashboard"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400"
-          >
-            <ArrowLeft className="h-4 w-4" /> Dashboard
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle dark />
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400"
+            >
+              <ArrowLeft className="h-4 w-4" /> Dashboard
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -179,6 +214,64 @@ export default function ProfilePage() {
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+          <h2 className="text-lg font-extrabold tracking-tight">Keamanan</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Ganti password akunmu secara berkala.
+          </p>
+          <form onSubmit={handlePasswordSubmit} className="mt-5 space-y-4">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-slate-300">
+                Password lama
+              </span>
+              <input
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-semibold text-slate-300">
+                  Password baru
+                </span>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Min. 8 karakter"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-semibold text-slate-300">
+                  Konfirmasi baru
+                </span>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Ulangi password"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </label>
+            </div>
+            <button
+              type="submit"
+              disabled={changingPassword}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-emerald-500 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {changingPassword && <Loader2 className="h-4 w-4 animate-spin" />}
+              {changingPassword ? 'Mengganti...' : 'Ganti Password'}
             </button>
           </form>
         </div>

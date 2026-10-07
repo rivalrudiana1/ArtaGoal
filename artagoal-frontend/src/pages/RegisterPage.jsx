@@ -77,9 +77,9 @@ export default function RegisterPage() {
         />
         <SubmitButton loading={loading}>Daftar</SubmitButton>
       </form>
-      <p className="mt-5 text-center text-sm text-slate-500">
+      <p className="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">
         Sudah punya akun?{' '}
-        <Link to="/login" className="font-semibold text-emerald-700 hover:underline">
+        <Link to="/login" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
           Masuk
         </Link>
       </p>

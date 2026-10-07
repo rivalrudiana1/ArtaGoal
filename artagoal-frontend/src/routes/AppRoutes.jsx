@@ -8,8 +8,8 @@ import RegisterPage from '../pages/RegisterPage.jsx'
 
 function FullPageLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600" />
+    <div className="flex min-h-screen items-center justify-center dark:bg-slate-950">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600 dark:border-slate-700" />
     </div>
   )
 }
@@ -32,9 +32,9 @@ function GuestRoute({ children }) {
 
 function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-2">
-      <p className="text-4xl font-bold text-slate-800">404</p>
-      <p className="text-slate-500">Halaman tidak ditemukan.</p>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-2 dark:bg-slate-950">
+      <p className="text-4xl font-bold text-slate-800 dark:text-slate-100">404</p>
+      <p className="text-slate-500 dark:text-slate-400">Halaman tidak ditemukan.</p>
     </div>
   )
 }

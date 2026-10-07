@@ -16,6 +16,8 @@ import GoalCard from '../components/GoalCard.jsx'
 import ContributionHeatmap from '../components/ContributionHeatmap.jsx'
 import GoalProjectionChart from '../components/GoalProjectionChart.jsx'
 import NotificationBell from '../components/NotificationBell.jsx'
+import StatsStrip from '../components/StatsStrip.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 import ConfirmModal from '../components/ui/ConfirmModal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { apiErrorMessage, authFileUrl, goalService } from '../services/api.js'
@@ -72,8 +74,8 @@ function createdTime(goal) {
 
 function SummaryCard({ icon, label, value, accent }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
         {icon}
         <span>{label}</span>
       </div>
@@ -85,7 +87,7 @@ function SummaryCard({ icon, label, value, accent }) {
 }
 
 const selectClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-500'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -104,7 +106,8 @@ export default function DashboardPage() {
     setLoading(true)
     setError('')
     try {
-      const { data } = await goalService.listMyGoals()
+      // Limit 100: ringkasan total dihitung dari hasil fetch ini.
+      const { data } = await goalService.listMyGoals({ limit: 100 })
       setGoals(Array.isArray(data) ? data : [])
     } catch (err) {
       const message = apiErrorMessage(err, 'Gagal memuat daftar target.')
@@ -204,23 +207,24 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
               <PiggyBank className="h-5 w-5" />
             </span>
-            <span className="text-lg font-extrabold tracking-tight text-slate-900">
+            <span className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
               ArtaGoal
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <p className="hidden text-sm text-slate-600 sm:block">
+            <p className="hidden text-sm text-slate-600 sm:block dark:text-slate-400">
               {greeting()},{' '}
-              <span className="font-semibold text-slate-900">
+              <span className="font-semibold text-slate-900 dark:text-white">
                 {user?.name ?? 'Sobat'}
               </span>
             </p>
+            <ThemeToggle />
             <NotificationBell />
             <Link
               to="/profile"
@@ -242,7 +246,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setLogoutOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:text-slate-300"
             >
               <LogOut className="h-4 w-4" /> Keluar
             </button>
@@ -263,10 +267,10 @@ export default function DashboardPage() {
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               {greeting()}, {user?.name ?? 'Sobat'}!
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Pantau progres menuju semua target keuanganmu.
             </p>
           </div>
@@ -275,7 +279,7 @@ export default function DashboardPage() {
               type="button"
               onClick={handleExport}
               disabled={loading || goals.length === 0}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
               <Download className="h-4 w-4" /> Export Laporan (.csv)
             </button>
@@ -293,21 +297,23 @@ export default function DashboardPage() {
             icon={<Target className="h-4 w-4" />}
             label="Total target dana"
             value={formatIDR(summary.totalTarget)}
-            accent="text-slate-900"
+            accent="text-slate-900 dark:text-white"
           />
           <SummaryCard
             icon={<Wallet className="h-4 w-4" />}
             label="Total tabungan terkumpul"
             value={formatIDR(summary.totalSaved)}
-            accent="text-emerald-700"
+            accent="text-emerald-700 dark:text-emerald-400"
           />
           <SummaryCard
             icon={<PiggyBank className="h-4 w-4" />}
             label={`${goals.length} target • ${summary.percent.toFixed(1)}% tercapai`}
             value={formatIDR(Math.max(summary.totalTarget - summary.totalSaved, 0))}
-            accent="text-slate-900"
+            accent="text-slate-900 dark:text-white"
           />
         </section>
+
+        <StatsStrip refreshKey={heatmapKey} />
 
         <ContributionHeatmap refreshKey={heatmapKey} />
 
@@ -315,7 +321,7 @@ export default function DashboardPage() {
 
         <section
           aria-label="Pencarian dan filter target"
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >
           <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <label className="relative block">
@@ -326,7 +332,7 @@ export default function DashboardPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari target berdasarkan judul..."
-                className="w-full rounded-lg border border-slate-300 bg-white py-2 pr-3 pl-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                className="w-full rounded-lg border border-slate-300 bg-white py-2 pr-3 pl-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
             <label className="block">
@@ -374,10 +380,10 @@ export default function DashboardPage() {
               </select>
             </label>
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
             <p>
               Menampilkan{' '}
-              <span className="font-bold text-slate-800">
+              <span className="font-bold text-slate-800 dark:text-slate-100">
                 {filteredGoals.length}
               </span>{' '}
               dari {goals.length} target
@@ -387,7 +393,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+                className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 Reset filter
               </button>
@@ -396,12 +402,12 @@ export default function DashboardPage() {
         </section>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-slate-500">
+          <div className="flex items-center justify-center gap-2 py-16 text-slate-500 dark:text-slate-400">
             <Loader2 className="h-5 w-5 animate-spin" /> Memuat target...
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-500/30 dark:bg-red-500/10">
+            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             <button
               type="button"
               onClick={fetchGoals}
@@ -411,10 +417,10 @@ export default function DashboardPage() {
             </button>
           </div>
         ) : goals.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-            <Target className="mx-auto h-10 w-10 text-slate-300" />
-            <p className="mt-3 font-semibold text-slate-800">Belum ada target</p>
-            <p className="mt-1 text-sm text-slate-500">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
+            <Target className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
+            <p className="mt-3 font-semibold text-slate-800 dark:text-slate-100">Belum ada target</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               Buat target pertamamu dan mulai menabung dengan konsisten.
             </p>
             <Link
@@ -425,12 +431,12 @@ export default function DashboardPage() {
             </Link>
           </div>
         ) : filteredGoals.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-            <SearchX className="mx-auto h-10 w-10 text-slate-300" />
-            <p className="mt-3 font-semibold text-slate-800">
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
+            <SearchX className="mx-auto h-10 w-10 text-slate-300 dark:text-slate-600" />
+            <p className="mt-3 font-semibold text-slate-800 dark:text-slate-100">
               Target tidak ditemukan
             </p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
+            <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
               Tidak ada target yang cocok dengan pencarian
               {search.trim() ? ` “${search.trim()}”` : ''} dan kombinasi
               filter saat ini. Coba kata kunci lain atau atur ulang filter.

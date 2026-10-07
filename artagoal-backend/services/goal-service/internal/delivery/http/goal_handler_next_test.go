@@ -31,8 +31,12 @@ func (s *stubUC) AddContribution(_ context.Context, _ string, amount float64, no
 	s.goal.CurrentAmount += amount
 	return c, s.goal, nil
 }
-func (s *stubUC) ListContributions(_ context.Context, _ string) ([]entity.GoalContribution, error) {
-	return s.contribs, nil
+func (s *stubUC) ListContributions(_ context.Context, _ string, _, _ int) ([]entity.GoalContribution, int, float64, error) {
+	var total float64
+	for _, c := range s.contribs {
+		total += c.Amount
+	}
+	return s.contribs, len(s.contribs), total, nil
 }
 func (s *stubUC) GetContributionByID(_ context.Context, id string) (entity.GoalContribution, error) {
 	return entity.GoalContribution{ID: id, GoalID: s.goal.ID, Amount: 100, CreatedAt: time.Now()}, nil
@@ -46,8 +50,8 @@ func (s *stubUC) GetGoalByID(_ context.Context, _ string) (entity.Goal, error) {
 	}
 	return s.goal, nil
 }
-func (s *stubUC) GetGoalsByUserID(_ context.Context, _ string) ([]entity.Goal, error) {
-	return []entity.Goal{s.goal}, nil
+func (s *stubUC) GetGoalsByUserID(_ context.Context, _ string, _, _ int) ([]entity.Goal, int, error) {
+	return []entity.Goal{s.goal}, 1, nil
 }
 func (s *stubUC) GoalProgress(g entity.Goal) usecase.GoalProgress {
 	return usecase.GoalProgress{PercentComplete: 50, RemainingAmount: 500, MonthsRemaining: 6}
@@ -204,4 +208,3 @@ func TestGetMyGoals200(t *testing.T) {
 		t.Fatalf("ingin 200, dapat %d: %s", rec.Code, rec.Body.String())
 	}
 }
-

@@ -1,0 +1,11 @@
+# Normalisasi akhir baris agar konsisten di semua OS (hindari drift CRLF/LF).
+*.go text eol=lf
+*.sql text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.http text eol=lf
+*.md text eol=lf

@@ -9,6 +9,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       manifest: {
         name: 'ArtaGoal — Smart Goal Tracker',
@@ -34,4 +37,8 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+  },
 })

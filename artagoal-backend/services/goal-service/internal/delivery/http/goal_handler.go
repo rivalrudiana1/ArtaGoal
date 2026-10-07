@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -32,6 +33,8 @@ func (h *GoalHandler) RegisterGoalRoutes(r chi.Router) {
 	r.Get("/api/v1/goals", h.GetMyGoals)
 	// Daftarkan sebelum /{id} agar "heatmap" tidak ditangkap sebagai id.
 	r.Get("/api/v1/goals/heatmap", h.HandleGetHeatmap)
+	// Sama: "stats" adalah segmen statis, bukan id goal.
+	r.Get("/api/v1/goals/stats", h.GetStats)
 	r.Get("/api/v1/goals/{id}", h.GetGoalByID)
 	r.Get("/api/v1/users/{userID}/goals", h.GetGoalsByUser)
 	r.Put("/api/v1/goals/{id}", h.UpdateGoal)
@@ -47,6 +50,11 @@ func (h *GoalHandler) RegisterGoalRoutes(r chi.Router) {
 	// In-app notifications (dibuat oleh reminder worker).
 	r.Get("/api/v1/notifications", h.GetNotifications)
 	r.Put("/api/v1/notifications/{id}/read", h.MarkNotificationRead)
+
+	// Web Push: kunci publik + kelola langganan browser.
+	r.Get("/api/v1/push/vapid-public-key", h.GetVapidPublicKey)
+	r.Post("/api/v1/push/subscriptions", h.SavePushSubscription)
+	r.Delete("/api/v1/push/subscriptions", h.DeletePushSubscription)
 }
 
 // ---- DTO ----
@@ -238,6 +246,29 @@ func (h *GoalHandler) toResponse(g entity.Goal) GoalResponse {
 	return resp
 }
 
+// parsePagination membaca ?page=&limit= dengan default aman
+// (page 1, limit 50, maksimal 100). Tidak pernah mengembalikan error:
+// nilai tak valid dijepit, bukan ditolak.
+func parsePagination(r *http.Request) (page, limit int) {
+	page = 1
+	limit = usecase.DefaultPageLimit
+	if v, err := strconv.Atoi(r.URL.Query().Get("page")); err == nil && v >= 1 {
+		page = v
+	}
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v >= 1 {
+		limit = v
+	}
+	if limit > usecase.MaxPageLimit {
+		limit = usecase.MaxPageLimit
+	}
+	return page, limit
+}
+
+// setTotalCount menulis header jumlah total untuk respons berhalaman.
+func setTotalCount(w http.ResponseWriter, total int) {
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
+}
+
 // ---- handlers ----
 
 // CreateGoal menangani POST /api/v1/goals.
@@ -301,14 +332,16 @@ func (h *GoalHandler) GetGoalByID(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMyGoals menangani GET /api/v1/goals.
-// Mengembalikan semua goal milik user terautentikasi (dari JWT context).
+// Mengembalikan satu halaman goal milik user terautentikasi
+// (?page=&limit=, total di header X-Total-Count).
 func (h *GoalHandler) GetMyGoals(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireAuth(w, r)
 	if !ok {
 		return
 	}
 
-	goals, err := h.uc.GetGoalsByUserID(r.Context(), userID)
+	page, limit := parsePagination(r)
+	goals, total, err := h.uc.GetGoalsByUserID(r.Context(), userID, page, limit)
 	if err != nil {
 		status := statusForError(err)
 		if status == http.StatusInternalServerError {
@@ -323,6 +356,7 @@ func (h *GoalHandler) GetMyGoals(w http.ResponseWriter, r *http.Request) {
 	for _, g := range goals {
 		resp = append(resp, h.toResponse(g))
 	}
+	setTotalCount(w, total)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -345,7 +379,8 @@ func (h *GoalHandler) GetGoalsByUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	goals, err := h.uc.GetGoalsByUserID(r.Context(), userID)
+	page, limit := parsePagination(r)
+	goals, total, err := h.uc.GetGoalsByUserID(r.Context(), userID, page, limit)
 	if err != nil {
 		status := statusForError(err)
 		if status == http.StatusInternalServerError {
@@ -360,6 +395,7 @@ func (h *GoalHandler) GetGoalsByUser(w http.ResponseWriter, r *http.Request) {
 	for _, g := range goals {
 		resp = append(resp, h.toResponse(g))
 	}
+	setTotalCount(w, total)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -523,6 +559,7 @@ func (h *GoalHandler) CreateContribution(w http.ResponseWriter, r *http.Request)
 }
 
 // ListContributions menangani GET /api/v1/goals/{id}/contributions.
+// Satu halaman + ringkasan keseluruhan (?page=&limit=).
 // Hanya pemilik goal yang boleh melihat.
 func (h *GoalHandler) ListContributions(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -533,7 +570,8 @@ func (h *GoalHandler) ListContributions(w http.ResponseWriter, r *http.Request) 
 	if _, _, ok := h.ensureOwner(w, r, id); !ok {
 		return
 	}
-	items, err := h.uc.ListContributions(r.Context(), id)
+	page, limit := parsePagination(r)
+	items, count, total, err := h.uc.ListContributions(r.Context(), id, page, limit)
 	if err != nil {
 		status := statusForError(err)
 		if status == http.StatusInternalServerError {
@@ -543,12 +581,15 @@ func (h *GoalHandler) ListContributions(w http.ResponseWriter, r *http.Request) 
 		writeError(w, status, err.Error())
 		return
 	}
-	resp := ListContributionsResponse{Data: make([]ContributionResponse, 0, len(items))}
+	resp := ListContributionsResponse{
+		Data:             make([]ContributionResponse, 0, len(items)),
+		Count:            count,
+		TotalContributed: total,
+	}
 	for _, c := range items {
 		resp.Data = append(resp.Data, toContribution(c))
-		resp.TotalContributed += c.Amount
 	}
-	resp.Count = len(resp.Data)
+	setTotalCount(w, count)
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -704,14 +745,15 @@ func toNotification(n entity.Notification) NotificationResponse {
 }
 
 // GetNotifications menangani GET /api/v1/notifications.
-// Mengembalikan daftar notifikasi milik user terautentikasi (terbaru dulu).
+// Satu halaman milik user terautentikasi (?page=&limit=, total di header).
 func (h *GoalHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireAuth(w, r)
 	if !ok {
 		return
 	}
 
-	items, err := h.uc.GetNotifications(r.Context(), userID)
+	page, limit := parsePagination(r)
+	items, total, err := h.uc.GetNotifications(r.Context(), userID, page, limit)
 	if err != nil {
 		status := statusForError(err)
 		if status == http.StatusInternalServerError {
@@ -726,7 +768,114 @@ func (h *GoalHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	for _, n := range items {
 		resp = append(resp, toNotification(n))
 	}
+	setTotalCount(w, total)
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// GetStats menangani GET /api/v1/goals/stats.
+// Mengembalikan ringkasan gamifikasi (streak & level) milik user
+// terautentikasi.
+func (h *GoalHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	stats, err := h.uc.GetStats(r.Context(), userID)
+	if err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal mengambil statistik")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, stats)
+}
+
+// ---- web push ----
+
+// PushSubscriptionRequest adalah payload langganan browser.
+type PushSubscriptionRequest struct {
+	Endpoint string `json:"endpoint"`
+	Keys     struct {
+		P256dh string `json:"p256dh"`
+		Auth   string `json:"auth"`
+	} `json:"keys"`
+}
+
+// GetVapidPublicKey menangani GET /api/v1/push/vapid-public-key.
+// Mengembalikan kunci publik VAPID agar browser bisa berlangganan
+// (503 bila server belum dikonfigurasi).
+func (h *GoalHandler) GetVapidPublicKey(w http.ResponseWriter, r *http.Request) {
+	if _, ok := requireAuth(w, r); !ok {
+		return
+	}
+
+	key, err := h.uc.PushPublicKey()
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "web push belum dikonfigurasi di server")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"public_key": key})
+}
+
+// SavePushSubscription menangani POST /api/v1/push/subscriptions.
+// Body: {"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}.
+func (h *GoalHandler) SavePushSubscription(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	var req PushSubscriptionRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	sub, err := h.uc.SavePushSubscription(r.Context(), userID, req.Endpoint, req.Keys.P256dh, req.Keys.Auth)
+	if err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal menyimpan langganan push")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, map[string]string{"id": sub.ID})
+}
+
+// DeletePushSubscription menangani DELETE /api/v1/push/subscriptions.
+// Body: {"endpoint": "..."}. Idempotent: selalu 200 bila terautentikasi.
+func (h *GoalHandler) DeletePushSubscription(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireAuth(w, r)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	if err := h.uc.DeletePushSubscription(r.Context(), userID, req.Endpoint); err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal menghapus langganan push")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "push subscription deleted"})
 }
 
 // MarkNotificationRead menangani PUT /api/v1/notifications/{id}/read.
@@ -760,4 +909,3 @@ func (h *GoalHandler) MarkNotificationRead(w http.ResponseWriter, r *http.Reques
 
 	writeJSON(w, http.StatusOK, toNotification(updated))
 }
-

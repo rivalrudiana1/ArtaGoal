@@ -15,5 +15,6 @@ type UserRepository interface {
 	// UpdateProfile memperbarui nama dan avatar user.
 	// avatarURL adalah path statis (mis. "/uploads/avatars/abc.jpg").
 	UpdateProfile(ctx context.Context, id, name, avatarURL string) (entity.User, error)
+	// UpdatePassword mengganti hash password user.
+	UpdatePassword(ctx context.Context, id, passwordHash string) error
 }
-

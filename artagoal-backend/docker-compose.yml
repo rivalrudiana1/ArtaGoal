@@ -67,6 +67,10 @@ services:
       # Nilai default di bawah HANYA untuk dev lokal. Produksi WAJIB mengeset
       # JWT_SECRET via environment (lihat artagoal-backend/.env.example).
       JWT_SECRET: "${JWT_SECRET:-dev-only-insecure-secret-ganti-di-produksi}"
+      # Kunci VAPID untuk Web Push (kosong = push nonaktif). Isi via .env.
+      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      VAPID_CONTACT: "${VAPID_CONTACT:-mailto:admin@artagoal.local}"
     depends_on:
       postgres:
         condition: service_healthy

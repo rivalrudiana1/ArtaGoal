@@ -29,8 +29,10 @@ type AuthUsecase interface {
 	Login(ctx context.Context, req entity.LoginRequest) (entity.AuthResponse, error)
 	// Me mengambil profil user terautentikasi untuk endpoint GET /api/v1/auth/me.
 	Me(ctx context.Context, userID string) (entity.User, error)
-	// UpdateProfile mengubah nama dan avatar user untuk PUT /api/v1/auth/profile.
+	// UpdateProfile mengubah nama dan avatar user.
 	UpdateProfile(ctx context.Context, userID, name, avatarURL string) (entity.User, error)
+	// ChangePassword mengganti password user setelah memverifikasi password lama.
+	ChangePassword(ctx context.Context, userID, oldPassword, newPassword string) error
 	// GenerateToken membuat JWT 24 jam dengan klaim user_id, email, exp.
 	GenerateToken(user entity.User) (string, error)
 }
@@ -185,6 +187,40 @@ func (u *authUsecase) UpdateProfile(ctx context.Context, userID, name, avatarURL
 	return updated, nil
 }
 
+// ChangePassword memverifikasi password lama, memvalidasi password baru
+// (8-72 karakter), lalu menyimpan hash bcrypt yang baru.
+func (u *authUsecase) ChangePassword(ctx context.Context, userID, oldPassword, newPassword string) error {
+	if userID == "" {
+		return validationError("user_id wajib diisi")
+	}
+	if oldPassword == "" || newPassword == "" {
+		return validationError("password lama dan baru wajib diisi")
+	}
+	if oldPassword == newPassword {
+		return validationError("password baru harus berbeda dari password lama")
+	}
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+
+	user, err := u.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("usecase: ChangePassword load: %w", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+		return validationError("password lama salah")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("usecase: ChangePassword hash: %w", err)
+	}
+	if err := u.repo.UpdatePassword(ctx, userID, string(hash)); err != nil {
+		return fmt.Errorf("usecase: ChangePassword: %w", err)
+	}
+	return nil
+}
+
 // GenerateToken membuat JWT HS256 berumur 24 jam dengan klaim
 // user_id (UUID), email, iat, dan exp.
 func (u *authUsecase) GenerateToken(user entity.User) (string, error) {
@@ -208,4 +244,3 @@ func (u *authUsecase) GenerateToken(user entity.User) (string, error) {
 	}
 	return signed, nil
 }
-

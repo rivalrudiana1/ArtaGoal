@@ -57,6 +57,17 @@ func (s *memRepo) GetUserByID(_ context.Context, id string) (entity.User, error)
 	return u, nil
 }
 
+func (s *memRepo) UpdatePassword(_ context.Context, id, hash string) error {
+	u, ok := s.byID[id]
+	if !ok {
+		return entity.ErrUserNotFound
+	}
+	u.PasswordHash = hash
+	s.byID[id] = u
+	s.byEmail[u.Email] = u
+	return nil
+}
+
 func newTestRouter() chi.Router {
 	h := NewAuthHandler(usecase.NewAuthUsecase(newMemRepo(), testSecret))
 	r := chi.NewRouter()
@@ -154,3 +165,42 @@ func TestLoginFailuresAndRegisterValidation(t *testing.T) {
 	}
 }
 
+func TestChangePasswordEndpoint(t *testing.T) {
+	r := newTestRouter()
+
+	rec := doRequest(r, http.MethodPost, "/api/v1/auth/register", `{"name":"C","email":"c@x.com","password":"lama12345"}`, "")
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("register ingin 201, dapat %d: %s", rec.Code, rec.Body.String())
+	}
+	var reg struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &reg); err != nil {
+		t.Fatalf("respons register bukan JSON: %v", err)
+	}
+
+	rec = doRequest(r, http.MethodPut, "/api/v1/auth/password", `{"old_password":"lama12345","new_password":"baru12345"}`, reg.Token)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ganti password ingin 200, dapat %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doRequest(r, http.MethodPost, "/api/v1/auth/login", `{"email":"c@x.com","password":"baru12345"}`, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login password baru ingin 200, dapat %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doRequest(r, http.MethodPut, "/api/v1/auth/password", `{"old_password":"salah1234","new_password":"lain12345"}`, reg.Token)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("password lama salah ingin 400, dapat %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doRequest(r, http.MethodPut, "/api/v1/auth/password", `{"old_password":"baru12345","new_password":"baru12345"}`, reg.Token)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("password sama ingin 400, dapat %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doRequest(r, http.MethodPut, "/api/v1/auth/password", `{"old_password":"baru12345","new_password":"lain12345"}`, "")
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("tanpa token ingin 401, dapat %d: %s", rec.Code, rec.Body.String())
+	}
+}

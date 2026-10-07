@@ -133,3 +133,21 @@ func (r *UserPostgresRepository) UpdateProfile(ctx context.Context, id, name, av
 	return updated, nil
 }
 
+// UpdatePassword mengganti hash password user.
+// Mengembalikan ErrUserNotFound bila id tidak ada.
+func (r *UserPostgresRepository) UpdatePassword(ctx context.Context, id, passwordHash string) error {
+	const query = `UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`
+
+	res, err := r.db.ExecContext(ctx, query, passwordHash, id)
+	if err != nil {
+		return mapError("UpdatePassword", id, err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("postgres: UpdatePassword %s rows affected: %w", id, err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("postgres: UpdatePassword %s: %w", id, entity.ErrUserNotFound)
+	}
+	return nil
+}

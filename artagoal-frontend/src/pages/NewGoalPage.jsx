@@ -18,7 +18,7 @@ const CATEGORIES = [
 ]
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
+  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
 
 export default function NewGoalPage() {
   const navigate = useNavigate()
@@ -79,24 +79,24 @@ export default function NewGoalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <main className="mx-auto max-w-xl px-4 py-10">
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
         >
           <ArrowLeft className="h-4 w-4" /> Kembali ke dashboard
         </Link>
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 dark:border-slate-800 dark:bg-slate-900">
+          <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Target Baru
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Tentukan impian finansialmu beserta estimasi inflasinya.
           </p>
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Nama target
               </span>
               <input
@@ -111,7 +111,7 @@ export default function NewGoalPage() {
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Kategori
                 </span>
                 <select
@@ -127,7 +127,7 @@ export default function NewGoalPage() {
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Target tanggal (opsional)
                 </span>
                 <input
@@ -140,7 +140,7 @@ export default function NewGoalPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Target dana (Rp)
                 </span>
                 <input
@@ -154,7 +154,7 @@ export default function NewGoalPage() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">
+                <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                   Tabungan awal (Rp)
                 </span>
                 <input
@@ -167,10 +167,10 @@ export default function NewGoalPage() {
                 />
               </label>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <span className="mb-1 block text-sm font-medium text-slate-700">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+              <span className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 Estimasi inflasi{' '}
-                <span className="font-bold text-indigo-700">
+                <span className="font-bold text-indigo-700 dark:text-indigo-400">
                   {Number(inflation) || 0}% per tahun
                 </span>
               </span>
@@ -204,45 +204,45 @@ export default function NewGoalPage() {
                     className={inputClass}
                   />
                 </label>
-                <p className="flex items-center text-xs text-slate-500">
+                <p className="flex items-center text-xs text-slate-500 dark:text-slate-400">
                   Geser slider atau ketik manual (0–15%).
                 </p>
               </div>
             </div>
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
-              <p className="flex items-center gap-1.5 text-sm font-bold text-indigo-900">
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+              <p className="flex items-center gap-1.5 text-sm font-bold text-indigo-900 dark:text-indigo-300">
                 <Calculator className="h-4 w-4" /> Simulasi Proyeksi Real-time
               </p>
               {simulation.valid ? (
                 <dl className="mt-2.5 space-y-1.5 text-sm">
                   <div className="flex items-center justify-between">
-                    <dt className="text-slate-600">Target awal (PV)</dt>
-                    <dd className="font-semibold text-slate-900">
+                    <dt className="text-slate-600 dark:text-slate-400">Target awal (PV)</dt>
+                    <dd className="font-semibold text-slate-900 dark:text-white">
                       {formatIDR(simulation.pv)}
                     </dd>
                   </div>
                   <div className="flex items-center justify-between">
-                    <dt className="text-slate-600">
+                    <dt className="text-slate-600 dark:text-slate-400">
                       Future Value ({simulation.rate}% ×{' '}
                       {simulation.years.toFixed(1)} thn)
                     </dt>
-                    <dd className="font-extrabold text-indigo-700">
+                    <dd className="font-extrabold text-indigo-700 dark:text-indigo-400">
                       {formatIDR(simulation.fv)}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between border-t border-indigo-100 pt-1.5">
-                    <dt className="text-slate-600">Selisih akibat inflasi</dt>
-                    <dd className="font-semibold text-amber-700">
+                  <div className="flex items-center justify-between border-t border-indigo-100 pt-1.5 dark:border-indigo-500/20">
+                    <dt className="text-slate-600 dark:text-slate-400">Selisih akibat inflasi</dt>
+                    <dd className="font-semibold text-amber-700 dark:text-amber-400">
                       +{formatIDR(simulation.diff)}
                     </dd>
                   </div>
                 </dl>
               ) : (
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   Isi nominal target untuk melihat estimasi nilai masa depan.
                 </p>
               )}
-              <p className="mt-2.5 border-t border-indigo-100 pt-2 text-xs leading-relaxed text-slate-500">
+              <p className="mt-2.5 border-t border-indigo-100 pt-2 text-xs leading-relaxed text-slate-500 dark:border-indigo-500/20 dark:text-slate-400">
                 Simulasi frontend: FV = PV × (1 + i/100)
                 <sup>tahun</sup>.{!targetDate
                   ? ' Pilih tanggal target agar durasi tahun terhitung akurat.'

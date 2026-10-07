@@ -40,6 +40,7 @@ func (h *AuthHandler) RegisterAuthRoutes(r chi.Router, auth func(http.Handler) h
 	r.Post("/api/v1/auth/login", h.Login)
 	r.With(auth).Get("/api/v1/auth/me", h.Me)
 	r.With(auth).Put("/api/v1/auth/profile", h.HandleUpdateProfile)
+	r.With(auth).Put("/api/v1/auth/password", h.HandleChangePassword)
 }
 
 // ---- helpers ----
@@ -276,3 +277,35 @@ func saveAvatarFile(src multipart.File, filename string, size int64) (string, er
 	return "/uploads/avatars/" + name, nil
 }
 
+// ChangePasswordRequest adalah payload PUT /api/v1/auth/password.
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+// HandleChangePassword menangani PUT /api/v1/auth/password -> 200 OK.
+// Memverifikasi password lama sebelum menyimpan hash password baru.
+func (h *AuthHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized: token tidak ada atau tidak valid")
+		return
+	}
+
+	var req ChangePasswordRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	if err := h.uc.ChangePassword(r.Context(), userID, req.OldPassword, req.NewPassword); err != nil {
+		status := statusForError(err)
+		if status == http.StatusInternalServerError {
+			writeError(w, status, "gagal mengganti password")
+			return
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "password berhasil diganti"})
+}

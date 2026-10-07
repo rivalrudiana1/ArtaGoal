@@ -65,6 +65,7 @@ export const authService = {
   // otomatis oleh axios saat body berupa FormData — jangan di-set manual
   // agar browser menyisipkan boundary yang benar.
   updateProfile: (formData) => authApi.put('/auth/profile', formData),
+  changePassword: (payload) => authApi.put('/auth/password', payload),
 }
 
 /** URL absolut file statis auth-service (mis. avatar) dari path relatifnya. */
@@ -76,25 +77,31 @@ export function authFileUrl(path) {
 }
 
 export const goalService = {
-  listMyGoals: () => goalApi.get('/goals'),
+  listMyGoals: (params) => goalApi.get('/goals', { params }),
   getGoal: (id) => goalApi.get(`/goals/${id}`),
   createGoal: (payload) => goalApi.post('/goals', payload),
   updateGoal: (id, payload) => goalApi.put(`/goals/${id}`, payload),
   deleteGoal: (id) => goalApi.delete(`/goals/${id}`),
   addContribution: (goalId, payload) =>
     goalApi.post(`/goals/${goalId}/contributions`, payload),
-  listContributions: (goalId) =>
-    goalApi.get(`/goals/${goalId}/contributions`),
+  listContributions: (goalId, params) =>
+    goalApi.get(`/goals/${goalId}/contributions`, { params }),
   deleteContribution: (goalId, contributionId) =>
     goalApi.delete(`/goals/${goalId}/contributions/${contributionId}`),
   getProgress: (goalId) => goalApi.get(`/goals/${goalId}/progress`),
   getProjection: (goalId) => goalApi.get(`/goals/${goalId}/projection`),
   getHeatmap: () => goalApi.get('/goals/heatmap'),
-  getNotifications: () => goalApi.get('/notifications'),
+  getStats: () => goalApi.get('/goals/stats'),
+  getNotifications: (params) => goalApi.get('/notifications', { params }),
   markAsRead: (id) => goalApi.put(`/notifications/${id}/read`),
+  getVapidPublicKey: () => goalApi.get('/push/vapid-public-key'),
+  savePushSubscription: (payload) =>
+    goalApi.post('/push/subscriptions', payload),
+  deletePushSubscription: (endpoint) =>
+    goalApi.delete('/push/subscriptions', { data: { endpoint } }),
 }
 
 /** Ambil pesan error backend {error: "..."} atau fallback generik. */
 export function apiErrorMessage(error, fallback = 'Terjadi kesalahan.') {
-  return error.response?.data?.error ?? error.message ?? fallback
+  return error?.response?.data?.error ?? error?.message ?? fallback
 }

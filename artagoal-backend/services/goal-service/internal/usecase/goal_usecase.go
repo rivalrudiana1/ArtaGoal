@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"artagoal/goal-service/internal/domain/entity"
+	"artagoal/goal-service/internal/push"
 	"artagoal/goal-service/internal/repository"
 )
 
@@ -19,13 +20,16 @@ var ErrValidation = errors.New("validation error")
 type GoalUsecase interface {
 	CreateGoal(ctx context.Context, goal entity.Goal) (entity.Goal, error)
 	GetGoalByID(ctx context.Context, id string) (entity.Goal, error)
-	GetGoalsByUserID(ctx context.Context, userID string) ([]entity.Goal, error)
+	// GetGoalsByUserID mengembalikan satu halaman goal + total keseluruhan.
+	GetGoalsByUserID(ctx context.Context, userID string, page, limit int) ([]entity.Goal, int, error)
 	UpdateGoal(ctx context.Context, goal entity.Goal) (entity.Goal, error)
 	DeleteGoal(ctx context.Context, id string) error
 
 	// --- contributions ---
 	AddContribution(ctx context.Context, goalID string, amount float64, note *string) (entity.GoalContribution, entity.Goal, error)
-	ListContributions(ctx context.Context, goalID string) ([]entity.GoalContribution, error)
+	// ListContributions mengembalikan satu halaman setoran + jumlah dan
+	// total nominal keseluruhan (untuk envelope respons).
+	ListContributions(ctx context.Context, goalID string, page, limit int) (items []entity.GoalContribution, count int, total float64, err error)
 	GetContributionByID(ctx context.Context, id string) (entity.GoalContribution, error)
 	DeleteContribution(ctx context.Context, contributionID string) (entity.Goal, error)
 
@@ -34,14 +38,27 @@ type GoalUsecase interface {
 	GetHeatmapData(ctx context.Context, userID string) ([]entity.HeatmapData, error)
 
 	// --- notifications ---
-	// GetNotifications mengembalikan daftar notifikasi milik user.
-	GetNotifications(ctx context.Context, userID string) ([]entity.Notification, error)
+	// GetNotifications mengembalikan satu halaman notifikasi + total.
+	GetNotifications(ctx context.Context, userID string, page, limit int) ([]entity.Notification, int, error)
 	// MarkNotificationRead menandai satu notifikasi milik user sebagai dibaca.
 	MarkNotificationRead(ctx context.Context, userID, notificationID string) (entity.Notification, error)
 	// RunDeadlineReminderCheck memindai goal active yang tenggatnya <= 30 hari
 	// dengan progres < 80% lalu membuat notifikasi peringatan (anti-duplikat
 	// 7 hari). Mengembalikan jumlah notifikasi yang dibuat.
 	RunDeadlineReminderCheck(ctx context.Context) (int, error)
+
+	// GetStats menghitung ringkasan gamifikasi (streak & level) milik user.
+	GetStats(ctx context.Context, userID string) (entity.GoalStats, error)
+
+	// --- web push ---
+	// SetPushSender memasang pengirim push (nil = push nonaktif).
+	SetPushSender(sender PushSender)
+	// PushPublicKey mengembalikan kunci publik VAPID untuk klien.
+	PushPublicKey() (string, error)
+	// SavePushSubscription mendaftarkan langganan push milik user.
+	SavePushSubscription(ctx context.Context, userID, endpoint, p256dh, auth string) (entity.PushSubscription, error)
+	// DeletePushSubscription menghapus langganan push milik user.
+	DeletePushSubscription(ctx context.Context, userID, endpoint string) error
 
 	// CalculateInflationProjection menghitung proyeksi anti-inflasi:
 	//   FV = PV * (1 + i)^n, dengan i = inflationRate/100 (desimal per tahun),
@@ -64,8 +81,16 @@ type GoalProgress struct {
 
 // goalUsecase implementasi GoalUsecase.
 type goalUsecase struct {
-	repo repository.GoalRepository
-	now  func() time.Time
+	repo       repository.GoalRepository
+	now        func() time.Time
+	pushSender PushSender
+}
+
+// PushSender mengirim satu push Web Push.
+// gone=true berarti endpoint sudah mati dan langganannya dibersihkan.
+type PushSender interface {
+	PublicKey() string
+	Send(sub push.Subscription, title, body, url string) (gone bool, err error)
 }
 
 // NewGoalUsecase membuat usecase baru.
@@ -145,16 +170,53 @@ func (u *goalUsecase) GetGoalByID(ctx context.Context, id string) (entity.Goal, 
 	return goal, nil
 }
 
-// GetGoalsByUserID mengambil semua goal milik satu user.
-func (u *goalUsecase) GetGoalsByUserID(ctx context.Context, userID string) ([]entity.Goal, error) {
+// Batas pagination daftar: default 50, maksimal 100 per halaman.
+const (
+	DefaultPageLimit = 50
+	MaxPageLimit     = 100
+)
+
+// normalizePagination menjepit page/limit ke rentang valid
+// dan mengembalikan offset SQL.
+func normalizePagination(page, limit int) (offset int) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = DefaultPageLimit
+	}
+	if limit > MaxPageLimit {
+		limit = MaxPageLimit
+	}
+	return (page - 1) * limit
+}
+
+// normalizeLimit mengembalikan limit yang sudah dijepit (untuk query).
+func normalizeLimit(limit int) int {
+	if limit < 1 {
+		return DefaultPageLimit
+	}
+	if limit > MaxPageLimit {
+		return MaxPageLimit
+	}
+	return limit
+}
+
+// GetGoalsByUserID mengambil satu halaman goal milik satu user + totalnya.
+func (u *goalUsecase) GetGoalsByUserID(ctx context.Context, userID string, page, limit int) ([]entity.Goal, int, error) {
 	if userID == "" {
-		return nil, validationError("user_id wajib diisi")
+		return nil, 0, validationError("user_id wajib diisi")
 	}
-	goals, err := u.repo.GetGoalsByUserID(ctx, userID)
+	limit = normalizeLimit(limit)
+	goals, err := u.repo.GetGoalsByUserID(ctx, userID, limit, normalizePagination(page, limit))
 	if err != nil {
-		return nil, fmt.Errorf("usecase: GetGoalsByUserID: %w", err)
+		return nil, 0, fmt.Errorf("usecase: GetGoalsByUserID: %w", err)
 	}
-	return goals, nil
+	total, err := u.repo.CountGoalsByUserID(ctx, userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("usecase: GetGoalsByUserID count: %w", err)
+	}
+	return goals, total, nil
 }
 
 // UpdateGoal memuat entity lama (agar field imutabel seperti user_id
@@ -284,16 +346,22 @@ func (u *goalUsecase) AddContribution(ctx context.Context, goalID string, amount
 	return c, g, nil
 }
 
-// ListContributions mengembalikan daftar setoran satu goal (terbaru dulu).
-func (u *goalUsecase) ListContributions(ctx context.Context, goalID string) ([]entity.GoalContribution, error) {
+// ListContributions mengembalikan satu halaman setoran satu goal beserta
+// jumlah dan total nominal keseluruhan.
+func (u *goalUsecase) ListContributions(ctx context.Context, goalID string, page, limit int) ([]entity.GoalContribution, int, float64, error) {
 	if goalID == "" {
-		return nil, validationError("goal_id wajib diisi")
+		return nil, 0, 0, validationError("goal_id wajib diisi")
 	}
-	out, err := u.repo.ListContributionsByGoalID(ctx, goalID)
+	limit = normalizeLimit(limit)
+	out, err := u.repo.ListContributionsByGoalID(ctx, goalID, limit, normalizePagination(page, limit))
 	if err != nil {
-		return nil, fmt.Errorf("usecase: ListContributions: %w", err)
+		return nil, 0, 0, fmt.Errorf("usecase: ListContributions: %w", err)
 	}
-	return out, nil
+	count, total, err := u.repo.CountContributionsByGoalID(ctx, goalID)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("usecase: ListContributions count: %w", err)
+	}
+	return out, count, total, nil
 }
 
 // GetContributionByID mengambil satu setoran berdasarkan id.
@@ -358,19 +426,24 @@ func shortPercent(p float64) string {
 	return fmt.Sprintf("%.1f", p)
 }
 
-// GetNotifications mengembalikan daftar notifikasi milik satu user.
-func (u *goalUsecase) GetNotifications(ctx context.Context, userID string) ([]entity.Notification, error) {
+// GetNotifications mengembalikan satu halaman notifikasi milik user + total.
+func (u *goalUsecase) GetNotifications(ctx context.Context, userID string, page, limit int) ([]entity.Notification, int, error) {
 	if userID == "" {
-		return nil, validationError("user_id wajib diisi")
+		return nil, 0, validationError("user_id wajib diisi")
 	}
-	out, err := u.repo.GetNotificationsByUserID(ctx, userID)
+	limit = normalizeLimit(limit)
+	out, err := u.repo.GetNotificationsByUserID(ctx, userID, limit, normalizePagination(page, limit))
 	if err != nil {
-		return nil, fmt.Errorf("usecase: GetNotifications: %w", err)
+		return nil, 0, fmt.Errorf("usecase: GetNotifications: %w", err)
+	}
+	total, err := u.repo.CountNotificationsByUserID(ctx, userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("usecase: GetNotifications count: %w", err)
 	}
 	if out == nil {
 		out = []entity.Notification{}
 	}
-	return out, nil
+	return out, total, nil
 }
 
 // MarkNotificationRead menandai satu notifikasi milik user sebagai dibaca.
@@ -434,9 +507,196 @@ func (u *goalUsecase) RunDeadlineReminderCheck(ctx context.Context) (int, error)
 			return created, fmt.Errorf("usecase: RunDeadlineReminderCheck create %s: %w", g.ID, err)
 		}
 		created++
+		u.sendPushBestEffort(ctx, g.UserID, reminderTitle, message)
 	}
 
 	return created, nil
+}
+
+// sendPushBestEffort meneruskan pengingat ke semua browser terdaftar.
+// Kegagalan tidak menggagalkan siklus worker; endpoint mati dibersihkan.
+func (u *goalUsecase) sendPushBestEffort(ctx context.Context, userID, title, message string) {
+	if u.pushSender == nil {
+		return
+	}
+	subs, err := u.repo.ListPushSubscriptionsByUserID(ctx, userID)
+	if err != nil {
+		return
+	}
+	for _, s := range subs {
+		gone, err := u.pushSender.Send(push.Subscription{
+			Endpoint: s.Endpoint,
+			P256dh:   s.P256dh,
+			Auth:     s.Auth,
+		}, title, message, "/")
+		if err != nil || !gone {
+			continue
+		}
+		_ = u.repo.DeletePushSubscription(ctx, userID, s.Endpoint)
+	}
+}
+
+// levelTier adalah ambang total setoran untuk tiap level konsistensi.
+type levelTier struct {
+	min  int
+	name string
+}
+
+// levelTiers terurut menaik; tier tertinggi yang min-nya terpenuhi menang.
+var levelTiers = []levelTier{
+	{min: 0, name: "Pemula"},
+	{min: 10, name: "Penabung Rutin"},
+	{min: 30, name: "Pejuang Konsisten"},
+	{min: 100, name: "Legenda Menabung"},
+}
+
+// truncateDay membuang komponen jam agar perbandingan hari kalender tepat.
+func truncateDay(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// GetStats menghitung streak harian (berjalan & terpanjang), hari aktif
+// setahun terakhir, dan level konsistensi berdasarkan total setoran.
+// Streak dianggap hidup bila setoran terakhir hari ini atau kemarin.
+func (u *goalUsecase) GetStats(ctx context.Context, userID string) (entity.GoalStats, error) {
+	if userID == "" {
+		return entity.GoalStats{}, validationError("user_id wajib diisi")
+	}
+	dates, err := u.repo.ListContributionDates(ctx, userID)
+	if err != nil {
+		return entity.GoalStats{}, fmt.Errorf("usecase: GetStats dates: %w", err)
+	}
+	total, err := u.repo.CountContributionsByUserID(ctx, userID)
+	if err != nil {
+		return entity.GoalStats{}, fmt.Errorf("usecase: GetStats count: %w", err)
+	}
+
+	today := truncateDay(u.now())
+	days := make([]time.Time, 0, len(dates))
+	for _, d := range dates {
+		days = append(days, truncateDay(d))
+	}
+
+	stats := entity.GoalStats{TotalContributions: total}
+	day := 24 * time.Hour
+
+	// Hari aktif dalam 365 hari terakhir.
+	cutoff := today.Add(-364 * day)
+	for _, d := range days {
+		if !d.Before(cutoff) {
+			stats.ActiveDays365++
+		}
+	}
+
+	// Streak berjalan dari belakang (terbaru dulu).
+	if len(days) > 0 && (days[0].Equal(today) || days[0].Equal(today.Add(-day))) {
+		expected := days[0]
+		for _, d := range days {
+			if d.Equal(expected) {
+				stats.CurrentStreakDays++
+				expected = expected.Add(-day)
+			} else if d.Before(expected) {
+				break
+			}
+		}
+	}
+
+	// Streak terpanjang sepanjang masa (diurut menaik).
+	if len(days) > 0 {
+		asc := make([]time.Time, len(days))
+		copy(asc, days)
+		for i, j := 0, len(asc)-1; i < j; i, j = i+1, j-1 {
+			asc[i], asc[j] = asc[j], asc[i]
+		}
+		run, best := 1, 1
+		for i := 1; i < len(asc); i++ {
+			if asc[i].Equal(asc[i-1].Add(day)) {
+				run++
+				if run > best {
+					best = run
+				}
+			} else {
+				run = 1
+			}
+		}
+		stats.LongestStreakDays = best
+	}
+
+	// Level dari total setoran + progres ke level berikut.
+	tier := levelTiers[0]
+	var next *levelTier
+	for i := range levelTiers {
+		if total >= levelTiers[i].min {
+			tier = levelTiers[i]
+			if i+1 < len(levelTiers) {
+				next = &levelTiers[i+1]
+			} else {
+				next = nil
+			}
+		}
+	}
+	stats.Level = tier.name
+	if next == nil {
+		stats.LevelProgress = 100
+	} else {
+		span := float64(next.min - tier.min)
+		stats.LevelProgress = float64(total-tier.min) / span * 100
+		n := next.min
+		stats.NextLevelAt = &n
+	}
+
+	return stats, nil
+}
+
+// SetPushSender memasang pengirim Web Push (nil menonaktifkannya).
+func (u *goalUsecase) SetPushSender(sender PushSender) {
+	u.pushSender = sender
+}
+
+// PushPublicKey mengembalikan kunci publik VAPID untuk klien browser.
+func (u *goalUsecase) PushPublicKey() (string, error) {
+	if u.pushSender == nil || u.pushSender.PublicKey() == "" {
+		return "", validationError("web push belum dikonfigurasi di server")
+	}
+	return u.pushSender.PublicKey(), nil
+}
+
+// SavePushSubscription memvalidasi lalu menyimpan langganan push milik user.
+func (u *goalUsecase) SavePushSubscription(ctx context.Context, userID, endpoint, p256dh, auth string) (entity.PushSubscription, error) {
+	if userID == "" {
+		return entity.PushSubscription{}, validationError("user_id wajib diisi")
+	}
+	if endpoint == "" || p256dh == "" || auth == "" {
+		return entity.PushSubscription{}, validationError("endpoint, p256dh, dan auth wajib diisi")
+	}
+	if len(endpoint) > 2048 || len(p256dh) > 255 || len(auth) > 255 {
+		return entity.PushSubscription{}, validationError("data langganan push terlalu panjang")
+	}
+	sub, err := u.repo.SavePushSubscription(ctx, entity.PushSubscription{
+		UserID:   userID,
+		Endpoint: endpoint,
+		P256dh:   p256dh,
+		Auth:     auth,
+	})
+	if err != nil {
+		return entity.PushSubscription{}, fmt.Errorf("usecase: SavePushSubscription: %w", err)
+	}
+	return sub, nil
+}
+
+// DeletePushSubscription menghapus langganan push milik user (idempotent).
+func (u *goalUsecase) DeletePushSubscription(ctx context.Context, userID, endpoint string) error {
+	if userID == "" {
+		return validationError("user_id wajib diisi")
+	}
+	if endpoint == "" {
+		return validationError("endpoint wajib diisi")
+	}
+	if err := u.repo.DeletePushSubscription(ctx, userID, endpoint); err != nil {
+		return fmt.Errorf("usecase: DeletePushSubscription: %w", err)
+	}
+	return nil
 }
 
 // GoalProgress menghitung persen tercapai, sisa, dan proyeksi inflasi.
@@ -478,4 +738,3 @@ func (u *goalUsecase) GoalProgress(goal entity.Goal) GoalProgress {
 	}
 	return p
 }
-

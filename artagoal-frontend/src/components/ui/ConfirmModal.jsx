@@ -53,7 +53,7 @@ export default function ConfirmModal({
 
   return (
     <div
-      className="animate-confirm-overlay fixed inset-0 z-[60] flex items-center justify-center bg-black/60 px-4 backdrop-blur-md"
+      className="animate-confirm-overlay fixed inset-0 z-60 flex items-center justify-center bg-black/60 px-4 backdrop-blur-md"
       role="alertdialog"
       aria-modal="true"
       aria-label={title}

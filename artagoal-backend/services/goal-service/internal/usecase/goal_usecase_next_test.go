@@ -53,7 +53,7 @@ func (s *stubRepo) AddContribution(_ context.Context, goalID string, amount floa
 	return c, g, nil
 }
 
-func (s *stubRepo) ListContributionsByGoalID(_ context.Context, goalID string) ([]entity.GoalContribution, error) {
+func (s *stubRepo) ListContributionsByGoalID(_ context.Context, goalID string, _, _ int) ([]entity.GoalContribution, error) {
 	if _, ok := s.goals[goalID]; !ok {
 		return nil, entity.ErrGoalNotFound
 	}
@@ -177,4 +177,3 @@ func TestUpdateGoalOverdueStillEditable(t *testing.T) {
 		t.Fatalf("title harus berubah, dapat %q", updated.Title)
 	}
 }
-

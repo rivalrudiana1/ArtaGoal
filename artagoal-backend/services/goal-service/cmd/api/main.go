@@ -15,11 +15,12 @@ import (
 
 	deliveryhttp "artagoal/goal-service/internal/delivery/http"
 	authmw "artagoal/goal-service/internal/delivery/http/middleware"
+	"artagoal/goal-service/internal/push"
 	"artagoal/goal-service/internal/repository/postgres"
 	"artagoal/goal-service/internal/usecase"
 	"artagoal/goal-service/internal/worker"
-	"artagoal/goal-service/pkg/database"
 	"artagoal/goal-service/migrations"
+	"artagoal/goal-service/pkg/database"
 )
 
 func main() {
@@ -45,6 +46,22 @@ func main() {
 	repo := postgres.NewGoalPostgresRepository(db)
 	uc := usecase.NewGoalUsecase(repo)
 	goalHandler := deliveryhttp.NewGoalHandler(uc)
+
+	// Web Push (VAPID): nonaktif bila kunci belum dikonfigurasi.
+	contact := os.Getenv("VAPID_CONTACT")
+	if contact == "" {
+		contact = "mailto:admin@artagoal.local"
+	}
+	pushSender := push.NewSender(
+		os.Getenv("VAPID_PUBLIC_KEY"),
+		os.Getenv("VAPID_PRIVATE_KEY"),
+		contact,
+	)
+	if pushSender.Enabled() {
+		uc.SetPushSender(pushSender)
+	} else {
+		log.Println("Peringatan: VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY kosong — Web Push nonaktif")
+	}
 
 	// Background worker: cek pengingat tenggat segera saat boot,
 	// lalu berulang setiap 24 jam.
@@ -90,4 +107,3 @@ func main() {
 		log.Fatalf("server berhenti: %v", err)
 	}
 }
-

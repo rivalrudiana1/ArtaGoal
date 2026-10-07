@@ -3,6 +3,7 @@ import {
   CalendarDays,
   History,
   Loader2,
+  Pencil,
   Plus,
   Trash2,
   TrendingUp,
@@ -21,6 +22,31 @@ const STATUS_STYLE = {
   cancelled: 'bg-slate-200 text-slate-600',
 }
 
+const EDIT_CATEGORIES = [
+  'Dana Darurat',
+  'Pendidikan',
+  'Investasi',
+  'Gadget',
+  'Kendaraan',
+  'Pensiun',
+  'Rumah',
+  'Liburan',
+  'Modal Usaha',
+  'Lainnya',
+]
+
+const EDIT_STATUSES = ['active', 'cancelled']
+
+function toDateInput(value) {
+  if (!value) return ''
+  const t = new Date(value).getTime()
+  if (Number.isNaN(t)) return ''
+  return new Date(t).toISOString().slice(0, 10)
+}
+
+const editInputClass =
+  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100'
+
 export default function GoalCard({ goal, onContributed, onDeleted }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -29,6 +55,14 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editCategory, setEditCategory] = useState('')
+  const [editTarget, setEditTarget] = useState('')
+  const [editDate, setEditDate] = useState('')
+  const [editInflation, setEditInflation] = useState('')
+  const [editStatus, setEditStatus] = useState('active')
 
   const percent = formatPercent(goal.current_amount, goal.target_amount)
   const futureTarget = goal.projection?.future_target_amount
@@ -70,6 +104,47 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
       toast.error(apiErrorMessage(err, 'Gagal menghapus target.'))
     } finally {
       setDeleting(false)
+    }
+  }
+
+  function openEditModal() {
+    setEditTitle(goal.title ?? '')
+    setEditCategory(goal.category ?? '')
+    setEditTarget(String(goal.target_amount ?? ''))
+    setEditDate(toDateInput(goal.target_date))
+    setEditInflation(String(goal.expected_inflation_rate ?? ''))
+    setEditStatus(goal.status ?? 'active')
+    setEditOpen(true)
+  }
+
+  async function handleEdit(event) {
+    event.preventDefault()
+    const target = Number(editTarget)
+    if (!editTitle.trim()) {
+      toast.error('Nama target wajib diisi.')
+      return
+    }
+    if (!Number.isFinite(target) || target <= 0) {
+      toast.error('Target dana harus lebih dari 0.')
+      return
+    }
+    setEditSaving(true)
+    try {
+      const { data } = await goalService.updateGoal(goal.id, {
+        title: editTitle.trim(),
+        category: editCategory,
+        target_amount: target,
+        target_date: editDate || undefined,
+        expected_inflation_rate: Number(editInflation) || 0,
+        status: editStatus,
+      })
+      onContributed(data)
+      setEditOpen(false)
+      toast.success('Target berhasil diperbarui!')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Gagal memperbarui target.'))
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -153,6 +228,14 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
         </button>
         <button
           type="button"
+          onClick={openEditModal}
+          className="flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-slate-500 transition hover:border-emerald-200 hover:text-emerald-600"
+          aria-label={`Ubah ${goal.title}`}
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
           onClick={() => setDeleteOpen(true)}
           disabled={deleting}
           className="flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-slate-500 transition hover:border-red-200 hover:text-red-600 disabled:opacity-50"
@@ -179,6 +262,129 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
         onClose={() => setHistoryOpen(false)}
         onUpdated={onContributed}
       />
+
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+          <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-slate-900">Ubah target</h4>
+              <button
+                type="button"
+                onClick={() => setEditOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Tutup"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleEdit} className="mt-4 space-y-3">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Nama target
+                </span>
+                <input
+                  type="text"
+                  required
+                  maxLength={100}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className={editInputClass}
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                    Kategori
+                  </span>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className={editInputClass}
+                  >
+                    {!EDIT_CATEGORIES.includes(editCategory) && (
+                      <option value={editCategory}>{editCategory}</option>
+                    )}
+                    {EDIT_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                    Status
+                  </span>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className={editInputClass}
+                  >
+                    {!EDIT_STATUSES.includes(editStatus) && (
+                      <option value={editStatus}>{editStatus}</option>
+                    )}
+                    {EDIT_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-slate-700">
+                  Target dana (Rp)
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={editTarget}
+                  onChange={(e) => setEditTarget(e.target.value)}
+                  className={editInputClass}
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                    Tenggat
+                  </span>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className={editInputClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">
+                    Inflasi (%/thn)
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editInflation}
+                    onChange={(e) => setEditInflation(e.target.value)}
+                    className={editInputClass}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-slate-400">
+                Saldo terkumpul tidak bisa diubah manual — hanya lewat setoran.
+              </p>
+              <button
+                type="submit"
+                disabled={editSaving}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                Simpan perubahan
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">

@@ -65,12 +65,12 @@ type CreateGoalRequest struct {
 }
 
 // UpdateGoalRequest adalah payload PUT /api/v1/goals/{id} (full update).
-// user_id imutabel sehingga tidak termasuk di sini.
+// user_id imutabel sehingga tidak termasuk di sini; current_amount juga
+// read-only (saldo hanya berubah lewat endpoint contributions).
 type UpdateGoalRequest struct {
 	Title                 string  `json:"title"`
 	Category              string  `json:"category"`
 	TargetAmount          float64 `json:"target_amount"`
-	CurrentAmount         float64 `json:"current_amount"`
 	TargetDate            string  `json:"target_date"`
 	ExpectedInflationRate float64 `json:"expected_inflation_rate"`
 	Status                string  `json:"status"`
@@ -392,7 +392,6 @@ func (h *GoalHandler) UpdateGoal(w http.ResponseWriter, r *http.Request) {
 		Title:                 req.Title,
 		Category:              req.Category,
 		TargetAmount:          req.TargetAmount,
-		CurrentAmount:         req.CurrentAmount,
 		TargetDate:            targetDate,
 		ExpectedInflationRate: req.ExpectedInflationRate,
 		Status:                req.Status,

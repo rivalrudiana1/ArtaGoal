@@ -43,7 +43,9 @@ services:
     environment:
       PORT: "8081"
       DATABASE_URL: "postgresql://user:password@postgres:5432/artagoal?sslmode=disable"
-      JWT_SECRET: "${JWT_SECRET:-DEV-ONLY-INSECURE-SECRET}"
+      # Nilai default di bawah HANYA untuk dev lokal. Produksi WAJIB mengeset
+      # JWT_SECRET via environment (lihat artagoal-backend/.env.example).
+      JWT_SECRET: "${JWT_SECRET:-dev-only-insecure-secret-ganti-di-produksi}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +64,9 @@ services:
       HTTP_ADDR: ":8080"
       PORT: "8080"
       DATABASE_URL: "postgresql://user:password@postgres:5432/artagoal?sslmode=disable"
-      JWT_SECRET: "${JWT_SECRET:-DEV-ONLY-INSECURE-SECRET}"
+      # Nilai default di bawah HANYA untuk dev lokal. Produksi WAJIB mengeset
+      # JWT_SECRET via environment (lihat artagoal-backend/.env.example).
+      JWT_SECRET: "${JWT_SECRET:-dev-only-insecure-secret-ganti-di-produksi}"
     depends_on:
       postgres:
         condition: service_healthy

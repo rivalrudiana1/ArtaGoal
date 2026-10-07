@@ -97,6 +97,8 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('deadline')
   const [logoutOpen, setLogoutOpen] = useState(false)
+  // Bump setiap ada mutasi (setor/ubah/hapus) agar heatmap me-refetch.
+  const [heatmapKey, setHeatmapKey] = useState(0)
 
   const fetchGoals = useCallback(async () => {
     setLoading(true)
@@ -177,10 +179,12 @@ export default function DashboardPage() {
 
   function handleContributed(updatedGoal) {
     setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)))
+    setHeatmapKey((k) => k + 1)
   }
 
   function handleDeleted(id) {
     setGoals((prev) => prev.filter((g) => g.id !== id))
+    setHeatmapKey((k) => k + 1)
   }
 
   function handleExport() {
@@ -305,7 +309,7 @@ export default function DashboardPage() {
           />
         </section>
 
-        <ContributionHeatmap />
+        <ContributionHeatmap refreshKey={heatmapKey} />
 
         <GoalProjectionChart goals={goals} />
 

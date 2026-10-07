@@ -92,7 +92,9 @@ func normalizeStatus(status string) (string, error) {
 }
 
 // validateGoalFields memeriksa field bisnis yang berlaku untuk create & update.
-func validateGoalFields(goal *entity.Goal, now time.Time) error {
+// allowPastTargetDate=true untuk update agar goal yang sudah lewat tenggat
+// tetap bisa disunting (mis. ubah nama) tanpa dipaksa memajukan tanggal.
+func validateGoalFields(goal *entity.Goal, now time.Time, allowPastTargetDate bool) error {
 	if goal.UserID == "" {
 		return validationError("user_id wajib diisi")
 	}
@@ -108,7 +110,7 @@ func validateGoalFields(goal *entity.Goal, now time.Time) error {
 	if goal.ExpectedInflationRate < 0 {
 		return validationError("expected_inflation_rate tidak boleh negatif")
 	}
-	if goal.TargetDate != nil && !goal.TargetDate.After(now) {
+	if goal.TargetDate != nil && !allowPastTargetDate && !goal.TargetDate.After(now) {
 		return validationError("target_date harus di masa depan")
 	}
 	status, err := normalizeStatus(goal.Status)
@@ -121,7 +123,7 @@ func validateGoalFields(goal *entity.Goal, now time.Time) error {
 
 // CreateGoal memvalidasi input lalu mendelegasikan penyimpanan ke repository.
 func (u *goalUsecase) CreateGoal(ctx context.Context, goal entity.Goal) (entity.Goal, error) {
-	if err := validateGoalFields(&goal, u.now()); err != nil {
+	if err := validateGoalFields(&goal, u.now(), false); err != nil {
 		return entity.Goal{}, err
 	}
 	created, err := u.repo.CreateGoal(ctx, goal)
@@ -158,6 +160,8 @@ func (u *goalUsecase) GetGoalsByUserID(ctx context.Context, userID string) ([]en
 // UpdateGoal memuat entity lama (agar field imutabel seperti user_id
 // dan created_at terjaga), menimpa field mutable, memvalidasi,
 // lalu menyimpan via repository.
+// current_amount SENGAJA tidak diambil dari input: saldo hanya berubah
+// lewat kontribusi (Add/DeleteContribution) agar konsisten dengan ledger.
 func (u *goalUsecase) UpdateGoal(ctx context.Context, goal entity.Goal) (entity.Goal, error) {
 	if goal.ID == "" {
 		return entity.Goal{}, validationError("id wajib diisi")
@@ -171,14 +175,13 @@ func (u *goalUsecase) UpdateGoal(ctx context.Context, goal entity.Goal) (entity.
 	existing.Title = goal.Title
 	existing.Category = goal.Category
 	existing.TargetAmount = goal.TargetAmount
-	existing.CurrentAmount = goal.CurrentAmount
 	existing.TargetDate = goal.TargetDate
 	existing.ExpectedInflationRate = goal.ExpectedInflationRate
 	if goal.Status != "" {
 		existing.Status = goal.Status
 	}
 
-	if err := validateGoalFields(&existing, u.now()); err != nil {
+	if err := validateGoalFields(&existing, u.now(), true); err != nil {
 		return entity.Goal{}, err
 	}
 	updated, err := u.repo.UpdateGoal(ctx, existing)

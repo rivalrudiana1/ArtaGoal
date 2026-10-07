@@ -58,7 +58,7 @@ Authorization: Bearer {{authToken}}
 GET {{goalBase}}/api/v1/goals/{{goalId}}
 Authorization: Bearer {{authToken}}
 
-### 7. Update goal
+### 7. Update goal (current_amount read-only: diabaikan bila dikirim)
 PUT {{goalBase}}/api/v1/goals/{{goalId}}
 Content-Type: application/json
 Authorization: Bearer {{authToken}}
@@ -67,7 +67,6 @@ Authorization: Bearer {{authToken}}
   "title": "DP Rumah Updated",
   "category": "Rumah",
   "target_amount": 120000000,
-  "current_amount": 5000000,
   "target_date": "2027-12-31",
   "expected_inflation_rate": 3,
   "status": "active"
@@ -103,3 +102,26 @@ Authorization: Bearer {{authToken}}
 ### 13. Delete goal
 DELETE {{goalBase}}/api/v1/goals/{{goalId}}
 Authorization: Bearer {{authToken}}
+
+### 14. Heatmap kontribusi 365 hari
+GET {{goalBase}}/api/v1/goals/heatmap
+Authorization: Bearer {{authToken}}
+
+### 15. List notifications
+GET {{goalBase}}/api/v1/notifications
+Authorization: Bearer {{authToken}}
+
+### 16. Tandai notifikasi dibaca
+PUT {{goalBase}}/api/v1/notifications/PASTE_NOTIFICATION_ID_HERE/read
+Authorization: Bearer {{authToken}}
+
+### 17. Update profil (multipart: field name + file avatar opsional)
+PUT {{authBase}}/api/v1/auth/profile
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data; boundary=----testboundary
+
+------testboundary
+Content-Disposition: form-data; name="name"
+
+Budi Baru
+------testboundary--

@@ -19,6 +19,7 @@ import (
 	"artagoal/goal-service/internal/usecase"
 	"artagoal/goal-service/internal/worker"
 	"artagoal/goal-service/pkg/database"
+	"artagoal/goal-service/migrations"
 )
 
 func main() {
@@ -34,6 +35,11 @@ func main() {
 		log.Fatalf("Gagal terhubung ke Database Supabase: %v", err)
 	}
 	defer db.Close()
+
+	// Migrasi skema otomatis (idempotent, dilacak di schema_migrations).
+	if err := database.RunMigrations(db, migrations.FS, log.Default()); err != nil {
+		log.Fatalf("Gagal menjalankan migrasi: %v", err)
+	}
 
 	// Wiring Clean Architecture: repository -> usecase -> handler
 	repo := postgres.NewGoalPostgresRepository(db)

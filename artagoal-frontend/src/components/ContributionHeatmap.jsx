@@ -28,7 +28,7 @@ function useIsMobile(breakpoint = 640) {
   return isMobile
 }
 
-export default function ContributionHeatmap() {
+export default function ContributionHeatmap({ refreshKey = 0 }) {
   const [raw, setRaw] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -36,6 +36,7 @@ export default function ContributionHeatmap() {
   const [today] = useState(() => new Date())
   const isMobile = useIsMobile()
 
+  // Me-refetch saat mount dan setiap refreshKey berubah (mis. pasca-setoran).
   useEffect(() => {
     let cancelled = false
     async function fetchHeatmap() {
@@ -57,7 +58,7 @@ export default function ContributionHeatmap() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [refreshKey])
 
   const amountByDate = useMemo(() => {
     const map = new Map()

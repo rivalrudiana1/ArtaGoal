@@ -1,0 +1,10 @@
+# === Secrets: JANGAN PERNAH commit kredensial asli ===
+# Salin *.env.example menjadi .env (untracked) dan isi nilai asli di sana.
+.env
+
+# === Uploads lokal (avatar dev) — dipersist via volume Docker, bukan git ===
+uploads/
+
+# === Build artifacts ===
+bin/
+dist/

@@ -17,6 +17,11 @@
 - 📈 **Kalkulasi Proyeksi Inflasi Real-time** — menghitung *Future Value* (`FV = PV × (1 + i/100)^tahun`) dan kebutuhan setoran bulanan otomatis, plus slider simulasi interaktif di halaman Target Baru.
 - 📊 **Visualisasi Grafik (Recharts)** — grafik gabungan Area + Line yang membandingkan dana terkumpul vs nilai target terinflasi per target.
 - 💳 **Manajemen & Riwayat Setoran** — pencatatan kontribusi tabungan berkala, modal riwayat transaksi, dan pembatalan setoran (saldo diperbarui atomik via transaksi DB).
+- ✏️ **Ubah Target** — sunting judul, kategori, nominal, tenggat, inflasi, dan status langsung dari kartu target (saldo terkumpul read-only, hanya berubah lewat setoran).
+- 🟩 **Heatmap Kontribusi ala GitHub** — agregasi setoran 365 hari (`GET /goals/heatmap`), level warna 0–4, tooltip nominal, me-refresh otomatis setelah setor/ubah/hapus.
+- 🔔 **Pengingat Tenggat & Notifikasi In-App** — background worker (cek saat boot + tiap 24 jam) membuat peringatan untuk target ≤30 hari dengan progres <80% (anti-duplikat 7 hari); lonceng + badge + dropdown "Tandai Dibaca" di header.
+- 👤 **Profil & Avatar** — ubah nama + upload avatar (JPG/PNG ≤2MB) via `PUT /auth/profile`, disajikan sebagai file statis `/uploads/*`.
+- 📲 **PWA** — manifest + service worker (auto-update) + ikon 192/512, bisa diinstal sebagai aplikasi.
 - 🔍 **Pencarian, Filter & Sorting** — cari berdasar judul, filter kategori & status (`ACTIVE` / `ACHIEVED`), urutkan berdasar tenggat, progres, nominal, atau terbaru.
 - 🖨️ **Export Laporan (.csv)** — unduh ringkasan portofolio target (PV, FV, terkumpul, sisa, progres, status, tenggat) ke format CSV.
 - 🐳 **Full Containerization** — backend + Postgres + Redis siap jalan dalam satu perintah via Docker Compose (*multi-stage Go builds*).
@@ -33,21 +38,25 @@ ArtaGoal/
 ├── apitest.http                  # HTTP Client Test Suite (VS Code REST Client)
 ├── artagoal-backend/
 │   ├── docker-compose.yml        # postgres:15, redis:7, auth-service, goal-service
+│   ├── .env.example              # Contoh JWT_SECRET untuk compose (salin jadi .env)
 │   └── services/
-│       ├── auth-service/         # Port :8081 — register/login/me
+│       ├── auth-service/         # Port :8081 — register/login/me/profile
 │       │   ├── cmd/api/main.go
 │       │   ├── internal/{delivery,usecase,repository,domain}
-│       │   ├── migrations/001_init.sql
-│       │   └── pkg/database/
-│       └── goal-service/         # Port :8080 — goals, contributions, progress, projection
+│       │   ├── migrations/{001_init.sql,002_add_avatar_url.sql,embed.go}
+│       │   └── pkg/database/     # koneksi + auto-migrate
+│       └── goal-service/         # Port :8080 — goals, contributions, heatmap, notifications
 │           ├── cmd/api/main.go
-│           ├── internal/{delivery,usecase,repository,domain}
-│           ├── migrations/001_init.sql
-│           └── pkg/database/
-└── artagoal-frontend/            # Port :5173 (Vite dev) — React SPA
+│           ├── internal/{delivery,usecase,repository,domain,worker}
+│           ├── migrations/{001_init.sql,002_create_notifications.sql,embed.go}
+│           └── pkg/database/     # koneksi + auto-migrate
+└── artagoal-frontend/            # Port :5173 (Vite dev) — React SPA + PWA
+    ├── vite.config.js            # plugin VitePWA + manifest
+    ├── public/pwa-{192,512}.png  # ikon PWA (dibangkitkan via scripts/generate-pwa-icons.mjs)
     └── src/
-        ├── pages/                # Login, Register, Dashboard, NewGoal
-        ├── components/           # GoalCard, GoalProjectionChart, ContributionHistoryModal, AuthLayout
+        ├── pages/                # Login, Register, Dashboard, NewGoal, Profile
+        ├── components/           # GoalCard, GoalProjectionChart, ContributionHistoryModal,
+        │                         # ContributionHeatmap, NotificationBell, AuthLayout
         ├── context/AuthContext.jsx
         ├── services/api.js       # axios clients + goalService/authService
         └── utils/{format.js,exportCsv.js}
@@ -87,19 +96,24 @@ ArtaGoal/
 
 ### Opsi 1: Backend via Docker Compose (Rekomendasi)
 
-1. **Jalankan stack backend:**
+1. **Siapkan secret bersama (sekali saja):**
 
    ```powershell
    cd artagoal-backend
+   Copy-Item .env.example .env
+   # Isi JWT_SECRET di .env dengan nilai acak (mis. hasil `openssl rand -base64 48`).
+   # File .env TIDAK masuk git — jangan pernah commit kredensial asli.
+   ```
+
+2. **Jalankan stack backend (migrasi DB berjalan otomatis saat boot):**
+
+   ```powershell
    docker compose up -d --build
    ```
 
-2. **Eksekusi migrasi database:**
-
-   ```powershell
-   Get-Content services/auth-service/migrations/001_init.sql | docker exec -i artagoal-postgres psql -U user -d artagoal
-   Get-Content services/goal-service/migrations/001_init.sql | docker exec -i artagoal-postgres psql -U user -d artagoal
-   ```
+   Masing-masing service menerapkan `migrations/*.sql` yang belum diterapkan
+   (dilacak di tabel `schema_migrations`) setiap kali dinyalakan — tidak perlu
+   `psql -f` manual lagi. File upload avatar dipersist di volume `auth_uploads`.
 
 3. **Jalankan frontend React:**
 
@@ -113,7 +127,14 @@ ArtaGoal/
 
 ### Opsi 2: Backend Native (Go Run)
 
-Atur variabel lingkungan (`.env`) pada masing-masing folder service (`auth-service` & `goal-service`), pastikan Postgres lokal berjalan, lalu:
+Salin contoh env tiap service lalu isi nilai asli (cukup untuk dev lokal):
+
+```powershell
+Copy-Item services/auth-service/.env.example services/auth-service/.env
+Copy-Item services/goal-service/.env.example services/goal-service/.env
+```
+
+Pastikan Postgres lokal berjalan, lalu:
 
 ```powershell
 # Terminal 1 — Auth Service (:8081)
@@ -121,7 +142,7 @@ cd artagoal-backend/services/auth-service
 go run ./cmd/api/main.go
 
 # Terminal 2 — Goal Service (:8080)
-cd artagoal-backend/services/goal-service
+cd ../goal-service
 go run ./cmd/api/main.go
 ```
 
@@ -160,6 +181,8 @@ Copy-Item .env.example .env
 | `POST` | `/api/v1/auth/register` | Registrasi akun baru | Publik |
 | `POST` | `/api/v1/auth/login` | Login & penerbitan token JWT | Publik |
 | `GET` | `/api/v1/auth/me` | Profil pengguna aktif | Bearer Token |
+| `PUT` | `/api/v1/auth/profile` | Ubah nama + upload avatar (multipart, JPG/PNG ≤2MB) | Bearer Token |
+| `GET` | `/uploads/avatars/{file}` | File avatar statis | Publik |
 
 ### Goal Service (`http://localhost:8080`)
 
@@ -176,6 +199,9 @@ Copy-Item .env.example .env
 | `DELETE` | `/api/v1/goals/{id}/contributions/{cId}` | Hapus/batal setoran | Bearer Token (pemilik) |
 | `GET` | `/api/v1/goals/{id}/progress` | Snapshot progres + proyeksi | Bearer Token (pemilik) |
 | `GET` | `/api/v1/goals/{id}/projection` | Detail proyeksi inflasi | Bearer Token (pemilik) |
+| `GET` | `/api/v1/goals/heatmap` | Agregasi setoran per hari 365 hari terakhir | Bearer Token |
+| `GET` | `/api/v1/notifications` | Daftar notifikasi milik user | Bearer Token |
+| `PUT` | `/api/v1/notifications/{id}/read` | Tandai notifikasi dibaca | Bearer Token |
 
 > Koleksi pengujian manual tersedia di `apitest.http` (kompatibel dengan ekstensi REST Client VS Code). Alur: register → login (token otomatis dipakai) → create goal → contributions → progress/projection.
 
@@ -236,13 +262,16 @@ go test ./...
 |---|---|---|
 | `/` | Redirect ke `/dashboard` | — |
 | `/login`, `/register` | Autentikasi | Guest only |
-| `/dashboard` | Ringkasan, grafik, filter, daftar target | Login |
+| `/dashboard` | Ringkasan, heatmap, grafik, filter, daftar target | Login |
 | `/goals/new` | Form target + simulasi inflasi | Login |
+| `/profile` | Ubah nama + foto profil | Login |
 
 ---
 
 ## 📝 Catatan
 
-- `target_date` menerima format `YYYY-MM-DD` atau RFC3339.
+- `target_date` menerima format `YYYY-MM-DD` atau RFC3339. Pada **update**, goal yang sudah lewat tenggat tetap bisa disunting.
+- `current_amount` bersifat read-only di endpoint update — saldo hanya berubah lewat setoran/kontribusi.
 - Status goal yang valid: `active`, `achieved`, `cancelled`.
 - JWT dikirim via header `Authorization: Bearer <token>`; frontend menyimpan token di `localStorage` dan otomatis redirect ke `/login` saat 401.
+- **Keamanan secret:** `JWT_SECRET` harus sama di semua service dan minimal 32 karakter acak. Jangan pernah commit file `.env` berisi kredensial asli (sudah masuk `.gitignore`); gunakan `*.env.example` sebagai acuan.

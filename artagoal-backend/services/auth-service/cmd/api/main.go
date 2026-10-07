@@ -15,6 +15,7 @@ import (
 	authmw "artagoal/auth-service/internal/delivery/http/middleware"
 	"artagoal/auth-service/internal/repository/postgres"
 	"artagoal/auth-service/internal/usecase"
+	"artagoal/auth-service/migrations"
 	"artagoal/auth-service/pkg/database"
 )
 
@@ -31,6 +32,11 @@ func main() {
 		log.Fatalf("Gagal terhubung ke Database: %v", err)
 	}
 	defer db.Close()
+
+	// Migrasi skema otomatis (idempotent, dilacak di schema_migrations).
+	if err := database.RunMigrations(db, migrations.FS, log.Default()); err != nil {
+		log.Fatalf("Gagal menjalankan migrasi: %v", err)
+	}
 
 	// Secret JWT wajib sama dengan yang dipakai goal-service
 	// agar token hasil login valid di semua service.

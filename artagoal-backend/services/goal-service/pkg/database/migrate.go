@@ -10,18 +10,15 @@ import (
 )
 
 // RunMigrations menerapkan file .sql dari fsys (hasil go:embed atas
-// direktori migrations/) berurutan leksikal, masing-masing tepat sekali.
-// Status pelacakan disimpan di tabel schema_migrations sehingga aman
-// dijalankan ulang di setiap boot (file migrasi juga memakai IF NOT EXISTS).
+// direktori migrations/) berurutan leksikal, masing-masing tepat sekali
+// per service. Status pelacakan disimpan di tabel schema_migrations
+// (kunci service/filename) sehingga aman dijalankan ulang di setiap boot
+// (file migrasi juga memakai IF NOT EXISTS).
 //
-// Contoh pemakaian di main:
-//
-//	//go:embed ../../migrations/*.sql
-//	var migrationFS embed.FS
-//	if err := database.RunMigrations(db, migrationFS, log.Default()); err != nil {
-//		log.Fatalf("migrasi gagal: %v", err)
-//	}
-func RunMigrations(db *sql.DB, fsys fs.FS, logger *log.Logger) error {
+// Service diikutkan dalam kunci karena auth-service & goal-service berbagi
+// satu database fisik: tanpa namespace, "001_init.sql" milik satu service
+// akan menandai migrasi service lain sebagai sudah diterapkan.
+func RunMigrations(db *sql.DB, service string, fsys fs.FS, logger *log.Logger) error {
 	if logger == nil {
 		logger = log.Default()
 	}
@@ -47,11 +44,12 @@ func RunMigrations(db *sql.DB, fsys fs.FS, logger *log.Logger) error {
 	sort.Strings(names)
 
 	for _, name := range names {
+		key := service + "/" + name
 		var already bool
 		if err := db.QueryRow(
-			`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE filename = $1)`, name,
+			`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE filename = $1)`, key,
 		).Scan(&already); err != nil {
-			return fmt.Errorf("migrate: check %s: %w", name, err)
+			return fmt.Errorf("migrate: check %s: %w", key, err)
 		}
 		if already {
 			continue
@@ -59,27 +57,27 @@ func RunMigrations(db *sql.DB, fsys fs.FS, logger *log.Logger) error {
 
 		content, err := fs.ReadFile(fsys, name)
 		if err != nil {
-			return fmt.Errorf("migrate: read %s: %w", name, err)
+			return fmt.Errorf("migrate: read %s: %w", key, err)
 		}
 
 		tx, err := db.Begin()
 		if err != nil {
-			return fmt.Errorf("migrate: begin %s: %w", name, err)
+			return fmt.Errorf("migrate: begin %s: %w", key, err)
 		}
 		if _, err := tx.Exec(string(content)); err != nil {
 			_ = tx.Rollback()
-			return fmt.Errorf("migrate: apply %s: %w", name, err)
+			return fmt.Errorf("migrate: apply %s: %w", key, err)
 		}
 		if _, err := tx.Exec(
-			`INSERT INTO schema_migrations (filename) VALUES ($1)`, name,
+			`INSERT INTO schema_migrations (filename) VALUES ($1)`, key,
 		); err != nil {
 			_ = tx.Rollback()
-			return fmt.Errorf("migrate: track %s: %w", name, err)
+			return fmt.Errorf("migrate: track %s: %w", key, err)
 		}
 		if err := tx.Commit(); err != nil {
-			return fmt.Errorf("migrate: commit %s: %w", name, err)
+			return fmt.Errorf("migrate: commit %s: %w", key, err)
 		}
-		logger.Printf("migrate: applied %s", name)
+		logger.Printf("migrate: applied %s", key)
 	}
 
 	return nil

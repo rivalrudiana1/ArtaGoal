@@ -37,7 +37,7 @@ func main() {
 	defer db.Close()
 
 	// Migrasi skema otomatis (idempotent, dilacak di schema_migrations).
-	if err := database.RunMigrations(db, migrations.FS, log.Default()); err != nil {
+	if err := database.RunMigrations(db, "goal-service", migrations.FS, log.Default()); err != nil {
 		log.Fatalf("Gagal menjalankan migrasi: %v", err)
 	}
 

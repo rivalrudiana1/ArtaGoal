@@ -55,9 +55,9 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.Logger, chimiddleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		AllowedOrigins:   []string{"https://arta-goal.vercel.app", "http://localhost:5173", "http://127.0.0.1:5173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "bypass-tunnel-reminder"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))

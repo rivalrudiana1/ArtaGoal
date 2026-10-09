@@ -15,11 +15,11 @@ const joinUrl = (baseUrl, endpoint) => {
 }
 
 const AUTH_BASE_URL = ensureApiPrefix(
-  import.meta.env.VITE_AUTH_API_URL,
+  '',
   'https://auth-service-production-bc66.up.railway.app/api/v1',
 )
 const GOAL_BASE_URL = ensureApiPrefix(
-  import.meta.env.VITE_GOAL_API_URL,
+  '',
   'https://goal-service-production.up.railway.app/api/v1',
 )
 

@@ -408,12 +408,12 @@ export default function DashboardPage() {
             <Loader2 className="h-5 w-5 animate-spin" /> Memuat target...
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center dark:border-red-500/30 dark:bg-red-500/10">
-            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center dark:border-red-900/50 dark:bg-red-950/30">
+            <p className="text-sm font-medium text-red-400 dark:text-red-300">{error}</p>
             <button
               type="button"
               onClick={fetchGoals}
-              className="mt-3 min-h-[44px] rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700"
+              className="mt-3 min-h-[44px] rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none dark:bg-red-600 dark:hover:bg-red-500"
             >
               Coba lagi
             </button>

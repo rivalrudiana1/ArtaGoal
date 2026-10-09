@@ -28,33 +28,36 @@ func NewGoalHandler(uc usecase.GoalUsecase) *GoalHandler {
 // RegisterGoalRoutes mendaftarkan endpoint goal pada router chi yang diberikan.
 // Pemanggil wajib memasang middleware.AuthMiddleware pada grup route ini
 // (lihat cmd/api/main.go); /healthcheck tetap publik di luar grup tersebut.
+// Setiap endpoint tersedia dengan dua prefix: tanpa prefix dan "/api/v1".
 func (h *GoalHandler) RegisterGoalRoutes(r chi.Router) {
-	r.Post("/api/v1/goals", h.CreateGoal)
-	r.Get("/api/v1/goals", h.GetMyGoals)
-	// Daftarkan sebelum /{id} agar "heatmap" tidak ditangkap sebagai id.
-	r.Get("/api/v1/goals/heatmap", h.HandleGetHeatmap)
-	// Sama: "stats" adalah segmen statis, bukan id goal.
-	r.Get("/api/v1/goals/stats", h.GetStats)
-	r.Get("/api/v1/goals/{id}", h.GetGoalByID)
-	r.Get("/api/v1/users/{userID}/goals", h.GetGoalsByUser)
-	r.Put("/api/v1/goals/{id}", h.UpdateGoal)
-	r.Delete("/api/v1/goals/{id}", h.DeleteGoal)
+	for _, prefix := range []string{"", "/api/v1"} {
+		r.Post(prefix+"/goals", h.CreateGoal)
+		r.Get(prefix+"/goals", h.GetMyGoals)
+		// Daftarkan sebelum /{id} agar "heatmap" tidak ditangkap sebagai id.
+		r.Get(prefix+"/goals/heatmap", h.HandleGetHeatmap)
+		// Sama: "stats" adalah segmen statis, bukan id goal.
+		r.Get(prefix+"/goals/stats", h.GetStats)
+		r.Get(prefix+"/goals/{id}", h.GetGoalByID)
+		r.Get(prefix+"/users/{userID}/goals", h.GetGoalsByUser)
+		r.Put(prefix+"/goals/{id}", h.UpdateGoal)
+		r.Delete(prefix+"/goals/{id}", h.DeleteGoal)
 
-	// Next feature: contributions + progress/projection.
-	r.Post("/api/v1/goals/{id}/contributions", h.CreateContribution)
-	r.Get("/api/v1/goals/{id}/contributions", h.ListContributions)
-	r.Delete("/api/v1/goals/{id}/contributions/{contributionID}", h.DeleteContribution)
-	r.Get("/api/v1/goals/{id}/progress", h.GetProgress)
-	r.Get("/api/v1/goals/{id}/projection", h.GetProjection)
+		// Next feature: contributions + progress/projection.
+		r.Post(prefix+"/goals/{id}/contributions", h.CreateContribution)
+		r.Get(prefix+"/goals/{id}/contributions", h.ListContributions)
+		r.Delete(prefix+"/goals/{id}/contributions/{contributionID}", h.DeleteContribution)
+		r.Get(prefix+"/goals/{id}/progress", h.GetProgress)
+		r.Get(prefix+"/goals/{id}/projection", h.GetProjection)
 
-	// In-app notifications (dibuat oleh reminder worker).
-	r.Get("/api/v1/notifications", h.GetNotifications)
-	r.Put("/api/v1/notifications/{id}/read", h.MarkNotificationRead)
+		// In-app notifications (dibuat oleh reminder worker).
+		r.Get(prefix+"/notifications", h.GetNotifications)
+		r.Put(prefix+"/notifications/{id}/read", h.MarkNotificationRead)
 
-	// Web Push: kunci publik + kelola langganan browser.
-	r.Get("/api/v1/push/vapid-public-key", h.GetVapidPublicKey)
-	r.Post("/api/v1/push/subscriptions", h.SavePushSubscription)
-	r.Delete("/api/v1/push/subscriptions", h.DeletePushSubscription)
+		// Web Push: kunci publik + kelola langganan browser.
+		r.Get(prefix+"/push/vapid-public-key", h.GetVapidPublicKey)
+		r.Post(prefix+"/push/subscriptions", h.SavePushSubscription)
+		r.Delete(prefix+"/push/subscriptions", h.DeletePushSubscription)
+	}
 }
 
 // ---- DTO ----

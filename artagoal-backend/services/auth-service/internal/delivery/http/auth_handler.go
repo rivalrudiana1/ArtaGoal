@@ -35,12 +35,15 @@ func NewAuthHandler(uc usecase.AuthUsecase) *AuthHandler {
 // RegisterAuthRoutes mendaftarkan endpoint auth pada router chi yang diberikan.
 // Endpoint register & login bersifat publik; /me dibungkus middleware JWT
 // (user_id diambil dari klaim token, bukan dari path/body).
+// Setiap endpoint tersedia dengan dua prefix: "/auth/..." dan "/api/v1/auth/...".
 func (h *AuthHandler) RegisterAuthRoutes(r chi.Router, auth func(http.Handler) http.Handler) {
-	r.Post("/api/v1/auth/register", h.Register)
-	r.Post("/api/v1/auth/login", h.Login)
-	r.With(auth).Get("/api/v1/auth/me", h.Me)
-	r.With(auth).Put("/api/v1/auth/profile", h.HandleUpdateProfile)
-	r.With(auth).Put("/api/v1/auth/password", h.HandleChangePassword)
+	for _, prefix := range []string{"", "/api/v1"} {
+		r.Post(prefix+"/auth/register", h.Register)
+		r.Post(prefix+"/auth/login", h.Login)
+		r.With(auth).Get(prefix+"/auth/me", h.Me)
+		r.With(auth).Put(prefix+"/auth/profile", h.HandleUpdateProfile)
+		r.With(auth).Put(prefix+"/auth/password", h.HandleChangePassword)
+	}
 }
 
 // ---- helpers ----

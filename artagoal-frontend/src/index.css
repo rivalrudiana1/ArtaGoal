@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-// Mode gelap berbasis class (.dark di <html>), dikendalikan ThemeContext.
+/* Mode gelap berbasis class (.dark di <html>), dikendalikan ThemeContext. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {

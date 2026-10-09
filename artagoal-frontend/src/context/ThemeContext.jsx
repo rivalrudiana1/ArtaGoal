@@ -1,12 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
-const STORAGE_KEY = 'artagoal-theme'
+const STORAGE_KEY = 'theme'
+const LEGACY_STORAGE_KEY = 'artagoal-theme'
 
 const ThemeContext = createContext(null)
 
 function initialTheme() {
   if (typeof window === 'undefined') return 'light'
-  const saved = localStorage.getItem(STORAGE_KEY)
+  const saved =
+    localStorage.getItem(STORAGE_KEY) ??
+    localStorage.getItem(LEGACY_STORAGE_KEY)
   if (saved === 'light' || saved === 'dark') return saved
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'

@@ -5,14 +5,14 @@ import { goalService } from '../services/api.js'
 function StatItem({ icon, value, label }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="truncate text-lg leading-tight font-extrabold text-white">
+        <p className="truncate text-lg leading-tight font-extrabold text-slate-900 dark:text-white">
           {value}
         </p>
-        <p className="truncate text-xs text-slate-400">{label}</p>
+        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{label}</p>
       </div>
     </div>
   )
@@ -44,7 +44,7 @@ export default function StatsStrip({ refreshKey = 0 }) {
   return (
     <section
       aria-label="Streak dan level menabung"
-      className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-slate-100 shadow-lg"
+      className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-lg"
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <StatItem
@@ -69,7 +69,7 @@ export default function StatsStrip({ refreshKey = 0 }) {
       </div>
       {stats.next_level_at != null && (
         <div
-          className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800"
+          className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
           role="progressbar"
           aria-valuenow={Math.round(progress)}
           aria-valuemin={0}

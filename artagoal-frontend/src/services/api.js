@@ -14,13 +14,19 @@ const joinUrl = (baseUrl, endpoint) => {
   return `${cleanBase}/${cleanEndpoint}`
 }
 
+const IS_DEV = import.meta.env.DEV
+
 const AUTH_BASE_URL = ensureApiPrefix(
   '',
-  'https://auth-service-production-bc66.up.railway.app/api/v1',
+  IS_DEV
+    ? 'http://localhost:8081/api/v1'
+    : 'https://auth-service-production-bc66.up.railway.app/api/v1',
 )
 const GOAL_BASE_URL = ensureApiPrefix(
   '',
-  'https://goal-service-production.up.railway.app/api/v1',
+  IS_DEV
+    ? 'http://localhost:8080/api/v1'
+    : 'https://goal-service-production.up.railway.app/api/v1',
 )
 
 console.log('[API BASE AUTH]:', AUTH_BASE_URL)

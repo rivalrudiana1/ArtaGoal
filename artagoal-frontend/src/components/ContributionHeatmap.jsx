@@ -4,6 +4,7 @@ import { format, subDays } from 'date-fns'
 import { Flame } from 'lucide-react'
 import { apiErrorMessage, goalService } from '../services/api.js'
 import { formatIDR } from '../utils/format.js'
+import { useTheme } from '../context/ThemeContext.jsx'
 
 function levelForCount(count) {
   if (count <= 0) return 0
@@ -34,6 +35,7 @@ export default function ContributionHeatmap({ refreshKey = 0 }) {
   const [error, setError] = useState('')
   // Tanggal "hari ini" dijepret sekali agar kalender stabil antar render.
   const [today] = useState(() => new Date())
+  const { isDark } = useTheme()
   const isMobile = useIsMobile()
 
   // Me-refetch saat mount dan setiap refreshKey berubah (mis. pasca-setoran).
@@ -107,23 +109,23 @@ export default function ContributionHeatmap({ refreshKey = 0 }) {
   return (
     <section
       aria-label="Aktivitas menabung"
-      className="rounded-2xl border border-slate-800 bg-slate-900 p-5 text-slate-100 shadow-lg"
+      className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-800 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:shadow-lg"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
             <Flame className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-base font-extrabold tracking-tight sm:text-lg">
+            <h2 className="text-base font-extrabold tracking-tight text-slate-900 sm:text-lg dark:text-white">
               Aktivitas Menabung (365 Hari Terakhir)
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {totalCount} setoran • {formatIDR(totalAmount)} dalam setahun
             </p>
           </div>
         </div>
-        <p className="hidden text-xs text-slate-500 sm:block">
+        <p className="hidden text-xs text-slate-400 sm:block dark:text-slate-500">
           Semakin hijau, semakin rajin menabung
         </p>
       </div>
@@ -133,8 +135,8 @@ export default function ContributionHeatmap({ refreshKey = 0 }) {
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {error ? (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
-            <p className="text-sm text-red-300">{error}</p>
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center dark:border-red-900/50 dark:bg-red-950/30">
+            <p className="text-sm font-medium text-red-600 dark:text-red-300">{error}</p>
             <button
               type="button"
               onClick={retry}
@@ -144,11 +146,11 @@ export default function ContributionHeatmap({ refreshKey = 0 }) {
             </button>
           </div>
         ) : (
-          <div className="min-w-[620px] sm:min-w-0">
+          <div className="min-w-[620px] text-slate-500 sm:min-w-0 dark:text-slate-400">
           <ActivityCalendar
             data={calendarData}
             loading={loading}
-            colorScheme="dark"
+            colorScheme={isDark ? 'dark' : 'light'}
             theme={{
               light: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
               dark: ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'],

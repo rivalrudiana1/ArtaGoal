@@ -18,8 +18,8 @@ const linkBase =
 function linkClass({ isActive }) {
   return `${linkBase} ${
     isActive
-      ? 'text-emerald-400'
-      : 'text-slate-400 hover:text-slate-200 active:text-slate-100'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : 'text-slate-500 hover:text-slate-800 active:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 dark:active:text-slate-100'
   }`
 }
 
@@ -54,7 +54,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="fixed right-0 bottom-0 left-0 z-50 border-t border-slate-800 bg-slate-900/90 backdrop-blur-md md:hidden"
+      className="fixed right-0 bottom-0 left-0 z-50 border-t border-slate-200 bg-white/90 backdrop-blur-md md:hidden dark:border-slate-800 dark:bg-slate-900/90"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-between gap-1 px-2">
@@ -70,7 +70,7 @@ export default function BottomNav() {
               {isActive && (
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-1 h-1 w-8 rounded-full bg-emerald-400"
+                  className="absolute bottom-1 h-1 w-8 rounded-full bg-emerald-500 dark:bg-emerald-400"
                 />
               )}
             </>
@@ -89,7 +89,7 @@ export default function BottomNav() {
               {isActive && (
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-1 h-1 w-8 rounded-full bg-emerald-400"
+                  className="absolute bottom-1 h-1 w-8 rounded-full bg-emerald-500 dark:bg-emerald-400"
                 />
               )}
             </>
@@ -124,7 +124,9 @@ export default function BottomNav() {
                   alt=""
                   aria-hidden="true"
                   className={`h-6 w-6 rounded-full object-cover ring-2 ${
-                    isActive ? 'ring-emerald-400' : 'ring-slate-700'
+                    isActive
+                      ? 'ring-emerald-500 dark:ring-emerald-400'
+                      : 'ring-slate-200 dark:ring-slate-700'
                   }`}
                 />
               ) : user?.name ? (
@@ -132,8 +134,8 @@ export default function BottomNav() {
                   aria-hidden="true"
                   className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-extrabold ring-2 ${
                     isActive
-                      ? 'bg-emerald-500/20 text-emerald-300 ring-emerald-400'
-                      : 'bg-slate-800 text-slate-300 ring-slate-700'
+                      ? 'bg-emerald-100 text-emerald-700 ring-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400'
+                      : 'bg-slate-200 text-slate-600 ring-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'
                   }`}
                 >
                   {initials(user.name)}
@@ -149,7 +151,7 @@ export default function BottomNav() {
               {isActive && (
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-1 h-1 w-8 rounded-full bg-emerald-400"
+                  className="absolute bottom-1 h-1 w-8 rounded-full bg-emerald-500 dark:bg-emerald-400"
                 />
               )}
             </>

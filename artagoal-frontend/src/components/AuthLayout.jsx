@@ -1,8 +1,12 @@
 import { Info, Loader2, PiggyBank } from 'lucide-react'
+import ThemeToggle from './ThemeToggle.jsx'
 
 export function AuthShell({ title, subtitle, children }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-slate-50 to-teal-100 px-4 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-emerald-50 via-slate-50 to-teal-100 px-4 py-10 dark:from-slate-950 dark:via-slate-900 dark:to-emerald-950">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <div className="mb-6 flex items-center justify-center gap-2">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white">

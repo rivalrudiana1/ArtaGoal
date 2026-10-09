@@ -248,9 +248,12 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setLogoutOpen(true)}
-              className="hidden min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 sm:flex dark:border-slate-700 dark:text-slate-300"
+              title="Keluar"
+              aria-label="Keluar dari akun"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 sm:px-4 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-500 dark:hover:text-red-400"
             >
-              <LogOut className="h-4 w-4" /> Keluar
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </div>
@@ -409,7 +412,7 @@ export default function DashboardPage() {
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center dark:border-red-900/50 dark:bg-red-950/30">
-            <p className="text-sm font-medium text-red-400 dark:text-red-300">{error}</p>
+            <p className="text-sm font-medium text-red-600 dark:text-red-300">{error}</p>
             <button
               type="button"
               onClick={fetchGoals}

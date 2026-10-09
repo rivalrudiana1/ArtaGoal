@@ -1,5 +1,12 @@
 import axios from 'axios'
 
+const ensureApiPrefix = (url, defaultUrl) => {
+  const baseUrl = url || defaultUrl
+  if (!baseUrl) return ''
+  const clean = baseUrl.replace(/\/+$/, '')
+  return clean.endsWith('/api/v1') ? clean : `${clean}/api/v1`
+}
+
 const joinUrl = (baseUrl, endpoint) => {
   if (!baseUrl) return endpoint
   const cleanBase = baseUrl.replace(/\/+$/, '')
@@ -7,10 +14,16 @@ const joinUrl = (baseUrl, endpoint) => {
   return `${cleanBase}/${cleanEndpoint}`
 }
 
-const AUTH_BASE_URL =
-  import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8081/api/v1'
-const GOAL_BASE_URL =
-  import.meta.env.VITE_GOAL_API_URL || 'http://localhost:8080/api/v1'
+const AUTH_BASE_URL = ensureApiPrefix(
+  import.meta.env.VITE_AUTH_API_URL,
+  'https://auth-service-production-bc66.up.railway.app/api/v1',
+)
+const GOAL_BASE_URL = ensureApiPrefix(
+  import.meta.env.VITE_GOAL_API_URL,
+  'https://goal-service-production.up.railway.app/api/v1',
+)
+
+console.log('[API BASE AUTH]:', AUTH_BASE_URL)
 
 export const TOKEN_KEY = 'artagoal_token'
 export const UNAUTH_EVENT = 'artagoal:unauthorized'

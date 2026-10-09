@@ -15,6 +15,7 @@ import { toast } from 'sonner'
 import GoalCard from '../components/GoalCard.jsx'
 import ContributionHeatmap from '../components/ContributionHeatmap.jsx'
 import GoalProjectionChart from '../components/GoalProjectionChart.jsx'
+import BottomNav from '../components/BottomNav.jsx'
 import NotificationBell from '../components/NotificationBell.jsx'
 import StatsStrip from '../components/StatsStrip.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
@@ -87,7 +88,7 @@ function SummaryCard({ icon, label, value, accent }) {
 }
 
 const selectClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-500'
+  'min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-500'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -206,9 +207,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-24 md:pb-0">
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
               <PiggyBank className="h-5 w-5" />
@@ -217,7 +218,7 @@ export default function DashboardPage() {
               ArtaGoal
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <p className="hidden text-sm text-slate-600 sm:block dark:text-slate-400">
               {greeting()},{' '}
               <span className="font-semibold text-slate-900 dark:text-white">
@@ -229,7 +230,8 @@ export default function DashboardPage() {
             <Link
               to="/profile"
               title="Profil saya"
-              className="overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-emerald-500"
+              aria-label="Profil saya"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-emerald-500 focus-visible:ring-emerald-500 focus-visible:outline-none"
             >
               {authFileUrl(user?.avatar_url) ? (
                 <img
@@ -246,7 +248,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setLogoutOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:text-slate-300"
+              className="hidden min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 sm:flex dark:border-slate-700 dark:text-slate-300"
             >
               <LogOut className="h-4 w-4" /> Keluar
             </button>
@@ -264,7 +266,7 @@ export default function DashboardPage() {
         variant="warning"
       />
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 pb-28 md:pb-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -274,18 +276,18 @@ export default function DashboardPage() {
               Pantau progres menuju semua target keuanganmu.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2">
             <button
               type="button"
               onClick={handleExport}
               disabled={loading || goals.length === 0}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
               <Download className="h-4 w-4" /> Export Laporan (.csv)
             </button>
             <Link
               to="/goals/new"
-              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" /> Target Baru
             </Link>
@@ -332,7 +334,7 @@ export default function DashboardPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari target berdasarkan judul..."
-                className="w-full rounded-lg border border-slate-300 bg-white py-2 pr-3 pl-9 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+                className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white py-3 pr-3 pl-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
             <label className="block">
@@ -393,7 +395,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="min-h-[44px] px-2 py-2 font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 Reset filter
               </button>
@@ -411,7 +413,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={fetchGoals}
-              className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              className="mt-3 min-h-[44px] rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700"
             >
               Coba lagi
             </button>
@@ -425,7 +427,7 @@ export default function DashboardPage() {
             </p>
             <Link
               to="/goals/new"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" /> Buat Target
             </Link>
@@ -444,7 +446,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={resetFilters}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Reset pencarian & filter
             </button>
@@ -462,6 +464,7 @@ export default function DashboardPage() {
           </section>
         )}
       </main>
+      <BottomNav />
     </div>
   )
 }

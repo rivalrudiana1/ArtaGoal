@@ -55,12 +55,12 @@ export default function LoginPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-3 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="absolute inset-y-0 right-0 flex min-h-[44px] min-w-[44px] items-center justify-center pr-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -71,7 +71,7 @@ export default function LoginPage() {
       </form>
       <p className="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">
         Belum punya akun?{' '}
-        <Link to="/register" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
+        <Link to="/register" className="inline-flex min-h-[44px] items-center px-1 py-2 font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
           Daftar gratis
         </Link>
       </p>

@@ -153,7 +153,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 const maxAvatarSize = 2 << 20
 
 // allowedAvatarExt adalah ekstensi gambar yang diizinkan untuk avatar.
-var allowedAvatarExt = map[string]bool{".jpg": true, ".jpeg": true, ".png": true}
+var allowedAvatarExt = map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
 
 // uniqueAvatarName membuat nama file unik dari timestamp + acak,
 // mempertahankan ekstensi asli yang sudah tervalidasi.
@@ -167,7 +167,7 @@ func uniqueAvatarName(ext string) string {
 
 // HandleUpdateProfile menangani PUT /api/v1/auth/profile -> 200 OK + profil terbaru.
 // Menerima multipart/form-data dengan field teks "name" dan file opsional "avatar".
-// File divalidasi maksimal 2MB dengan ekstensi jpg/jpeg/png, disimpan ke
+// File divalidasi maksimal 2MB dengan ekstensi jpg/jpeg/png/webp, disimpan ke
 // uploads/avatars dengan nama unik, lalu path statisnya disimpan ke database.
 func (h *AuthHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.UserIDFromContext(r.Context())
@@ -228,25 +228,25 @@ func (h *AuthHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, updated.ToInfo())
 }
 
-// saveAvatarFile memvalidasi ukuran (maks 2MB), ekstensi (jpg/jpeg/png),
-// dan isi gambar (jpeg/png), lalu menyimpannya ke uploads/avatars dengan
+// saveAvatarFile memvalidasi ukuran (maks 2MB), ekstensi (jpg/jpeg/png/webp),
+// dan isi gambar (jpeg/png/webp), lalu menyimpannya ke uploads/avatars dengan
 // nama unik. Mengembalikan path statis untuk disimpan ke database.
 func saveAvatarFile(src multipart.File, filename string, size int64) (string, error) {
 	if size > maxAvatarSize {
 		return "", errors.New("ukuran avatar maksimal 2MB")
 	}
-	ext := strings.ToLower(filepath.Ext(filename))
+	ext := strings.ToLower(filepath.Ext(filepath.Base(filename)))
 	if !allowedAvatarExt[ext] {
-		return "", errors.New("ekstensi avatar hanya boleh jpg/jpeg/png")
+		return "", errors.New("ekstensi avatar hanya boleh jpg/jpeg/png/webp")
 	}
 
-	// Sniff 512 byte pertama agar isi benar-benar gambar jpeg/png.
+	// Sniff 512 byte pertama agar isi benar-benar gambar jpeg/png/webp.
 	head := make([]byte, 512)
 	n, _ := io.ReadFull(src, head)
 	switch http.DetectContentType(head[:n]) {
-	case "image/jpeg", "image/png":
+	case "image/jpeg", "image/png", "image/webp":
 	default:
-		return "", errors.New("isi file avatar harus gambar jpeg/png")
+		return "", errors.New("isi file avatar harus gambar jpeg/png/webp")
 	}
 
 	if err := os.MkdirAll("uploads/avatars", 0o755); err != nil {

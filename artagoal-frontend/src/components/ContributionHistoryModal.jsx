@@ -154,7 +154,7 @@ export default function ContributionHistoryModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
             aria-label="Tutup riwayat"
           >
             <X className="h-5 w-5" />
@@ -172,7 +172,7 @@ export default function ContributionHistoryModal({
               <button
                 type="button"
                 onClick={fetchHistory}
-                className="mt-2 rounded-lg bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+                className="mt-2 min-h-[44px] rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Coba lagi
               </button>
@@ -214,7 +214,7 @@ export default function ContributionHistoryModal({
                     <button
                       type="button"
                       onClick={() => setPendingDelete(item)}
-                      className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-red-500 dark:hover:text-red-400"
+                      className="flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-medium text-slate-500 transition hover:border-red-200 hover:text-red-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-red-500 dark:hover:text-red-400"
                       aria-label={`Hapus setoran ${formatIDR(item.amount)}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Hapus
@@ -229,7 +229,7 @@ export default function ContributionHistoryModal({
               type="button"
               disabled={loadingMore}
               onClick={() => fetchHistory(page + 1)}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500"
+              className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500"
             >
               {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
               Muat lebih banyak ({items.length} dari {total})
@@ -240,7 +240,7 @@ export default function ContributionHistoryModal({
         <button
           type="button"
           onClick={onClose}
-          className="mt-4 w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="mt-4 min-h-[48px] w-full rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           Tutup
         </button>

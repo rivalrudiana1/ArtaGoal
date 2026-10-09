@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calculator, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import BottomNav from '../components/BottomNav.jsx'
 import { apiErrorMessage, goalService } from '../services/api.js'
 import { SubmitButton } from '../components/AuthLayout.jsx'
 import { formatIDR } from '../utils/format.js'
@@ -18,7 +19,7 @@ const CATEGORIES = [
 ]
 
 const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
+  'min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
 
 export default function NewGoalPage() {
   const navigate = useNavigate()
@@ -79,11 +80,11 @@ export default function NewGoalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 pb-24 md:pb-0 dark:bg-slate-950">
       <main className="mx-auto max-w-xl px-4 py-10">
         <Link
           to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
+          className="inline-flex min-h-[44px] items-center gap-1.5 px-1 py-2 text-sm font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
         >
           <ArrowLeft className="h-4 w-4" /> Kembali ke dashboard
         </Link>
@@ -181,7 +182,7 @@ export default function NewGoalPage() {
                 step="0.5"
                 value={Math.min(Math.max(Number(inflation) || 0, 0), 15)}
                 onChange={(e) => setInflation(e.target.value)}
-                className="w-full accent-emerald-600"
+                className="min-h-[44px] w-full accent-emerald-600"
                 aria-label="Geser untuk mengatur estimasi inflasi tahunan"
               />
               <div className="flex justify-between text-xs text-slate-400">
@@ -256,6 +257,7 @@ export default function NewGoalPage() {
           </form>
         </div>
       </main>
+      <BottomNav />
     </div>
   )
 }

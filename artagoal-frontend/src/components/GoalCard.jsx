@@ -45,7 +45,7 @@ function toDateInput(value) {
 }
 
 const editInputClass =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
+  'min-h-[44px] w-full rounded-lg border border-slate-300 px-3 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100'
 
 export default function GoalCard({ goal, onContributed, onDeleted }) {
   const [modalOpen, setModalOpen] = useState(false)
@@ -215,21 +215,21 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
         >
           <Plus className="h-4 w-4" /> Setor
         </button>
         <button
           type="button"
           onClick={() => setHistoryOpen(true)}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-3 text-sm font-semibold text-slate-600 transition hover:border-indigo-200 hover:text-indigo-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
         >
           <History className="h-4 w-4" /> Riwayat
         </button>
         <button
           type="button"
           onClick={openEditModal}
-          className="flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-slate-500 transition hover:border-emerald-200 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 px-3 py-3 text-slate-500 transition hover:border-emerald-200 hover:text-emerald-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
           aria-label={`Ubah ${goal.title}`}
         >
           <Pencil className="h-4 w-4" />
@@ -238,7 +238,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
           type="button"
           onClick={() => setDeleteOpen(true)}
           disabled={deleting}
-          className="flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-slate-500 transition hover:border-red-200 hover:text-red-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-400 dark:hover:border-red-500 dark:hover:text-red-400"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-200 px-3 py-3 text-slate-500 transition hover:border-red-200 hover:text-red-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-400 dark:hover:border-red-500 dark:hover:text-red-400"
           aria-label={`Hapus ${goal.title}`}
         >
           <Trash2 className="h-4 w-4" />
@@ -271,7 +271,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
               <button
                 type="button"
                 onClick={() => setEditOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 aria-label="Tutup"
               >
                 <X className="h-5 w-5" />
@@ -376,7 +376,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
               <button
                 type="submit"
                 disabled={editSaving}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
               >
                 {editSaving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Simpan perubahan
@@ -396,7 +396,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 aria-label="Tutup"
               >
                 <X className="h-5 w-5" />
@@ -415,7 +415,7 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
                   placeholder="500000"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="min-h-[44px] w-full rounded-lg border border-slate-300 px-3 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </label>
               <label className="block">
@@ -428,13 +428,13 @@ export default function GoalCard({ goal, onContributed, onDeleted }) {
                   placeholder="Gaji bulan ini"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="min-h-[44px] w-full rounded-lg border border-slate-300 px-3 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 />
               </label>
               <button
                 type="submit"
                 disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
               >
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 Simpan setoran

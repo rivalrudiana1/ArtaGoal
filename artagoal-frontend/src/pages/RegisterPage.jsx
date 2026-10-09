@@ -79,7 +79,7 @@ export default function RegisterPage() {
       </form>
       <p className="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">
         Sudah punya akun?{' '}
-        <Link to="/login" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
+        <Link to="/login" className="inline-flex min-h-[44px] items-center px-1 py-2 font-semibold text-emerald-700 hover:underline dark:text-emerald-400">
           Masuk
         </Link>
       </p>

@@ -43,6 +43,8 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Println("Peringatan: JWT_SECRET kosong — penerbitan token akan gagal")
+	} else if len(jwtSecret) < 32 {
+		log.Println("Peringatan: JWT_SECRET kurang dari 32 karakter — gunakan nilai acak yang lebih panjang")
 	}
 
 	// Wiring Clean Architecture: repository -> usecase -> handler

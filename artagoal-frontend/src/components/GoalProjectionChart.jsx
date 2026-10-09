@@ -150,25 +150,28 @@ export default function GoalProjectionChart({ goals = [] }) {
         </span>
       </div>
 
-      <div className="h-72 w-full sm:h-80">
+      <div className="h-64 w-full sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={chartData}
-            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+            margin={{ top: 8, right: 4, bottom: 0, left: -8 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
             <XAxis
               dataKey="title"
-              tick={{ fontSize: 12, fill: axisColor }}
+              tick={{ fontSize: 11, fill: axisColor }}
               tickLine={false}
               axisLine={{ stroke: gridColor }}
-              minTickGap={8}
+              minTickGap={12}
+              interval="preserveStart"
+              angle={0}
+              height={36}
             />
             <YAxis
-              tick={{ fontSize: 12, fill: axisColor }}
+              tick={{ fontSize: 11, fill: axisColor }}
               tickLine={false}
               axisLine={false}
-              width={64}
+              width={56}
               tickFormatter={formatCompactIDR}
             />
             <Tooltip content={<ChartTooltip />} />

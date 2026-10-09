@@ -722,7 +722,7 @@ func (u *goalUsecase) GoalProgress(goal entity.Goal) GoalProgress {
 	}
 	if goal.TargetDate != nil {
 		p.MonthsRemaining = MonthsRemaining(*goal.TargetDate, now)
-		fv, monthly := InflationProjection(goal.TargetAmount, goal.ExpectedInflationRate, *goal.TargetDate, now)
+		fv, _ := InflationProjection(goal.TargetAmount, goal.ExpectedInflationRate, *goal.TargetDate, now)
 		p.FutureTargetAmount = fv
 		// Kebutuhan bulanan dari kekurangan FV (bukan full FV) agar realistis.
 		shortfall := fv - goal.CurrentAmount
@@ -733,7 +733,6 @@ func (u *goalUsecase) GoalProgress(goal entity.Goal) GoalProgress {
 		if months < 1 {
 			months = 1
 		}
-		_ = monthly // nilai full-FV/div; kita pakai shortfall-based:
 		p.MonthlyNeeded = shortfall / float64(months)
 	}
 	return p

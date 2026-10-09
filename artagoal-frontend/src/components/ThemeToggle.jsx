@@ -12,8 +12,8 @@ export default function ThemeToggle({ dark = false }) {
       title={isDark ? 'Mode terang' : 'Mode gelap'}
       className={
         dark
-          ? 'flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400'
-          : 'flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600'
+          ? 'flex h-11 w-11 items-center justify-center rounded-full border border-slate-700 text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none'
+          : 'flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-emerald-300 hover:text-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none'
       }
     >
       <Icon className="h-4 w-4" />

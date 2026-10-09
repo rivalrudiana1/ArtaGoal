@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, Loader2, PiggyBank } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
+import BottomNav from '../components/BottomNav.jsx'
 import { apiErrorMessage, authFileUrl, authService } from '../services/api.js'
 
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024
@@ -52,8 +53,15 @@ export default function ProfilePage() {
   function handleFileChange(event) {
     const picked = event.target.files?.[0]
     if (!picked) return
-    if (!/\.jpe?g$|\.png$/i.test(picked.name)) {
-      toast.error('Avatar hanya boleh jpg/jpeg/png.')
+    if (!/\.jpe?g$|\.png$|\.webp$/i.test(picked.name)) {
+      toast.error('Avatar hanya boleh jpg/jpeg/png/webp.')
+      return
+    }
+    if (
+      picked.type &&
+      !['image/jpeg', 'image/png', 'image/webp'].includes(picked.type)
+    ) {
+      toast.error('Isi file avatar harus gambar jpeg/png/webp.')
       return
     }
     if (picked.size > MAX_AVATAR_SIZE) {
@@ -116,9 +124,9 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 pb-24 text-slate-100 md:pb-0">
       <header className="border-b border-slate-800 bg-slate-900">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white">
               <PiggyBank className="h-5 w-5" />
@@ -131,7 +139,7 @@ export default function ProfilePage() {
             <ThemeToggle dark />
             <Link
               to="/dashboard"
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-sm font-medium text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:border-emerald-500 hover:text-emerald-400"
             >
               <ArrowLeft className="h-4 w-4" /> Dashboard
             </Link>
@@ -164,7 +172,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   aria-label="Ubah foto profil"
-                  className="absolute -right-1 -bottom-1 flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-200 shadow transition hover:border-emerald-500 hover:text-emerald-400"
+                  className="absolute -right-1 -bottom-1 flex h-11 w-11 items-center justify-center rounded-full border border-slate-700 bg-slate-800 text-slate-200 shadow transition hover:border-emerald-500 hover:text-emerald-400 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
                 >
                   <Camera className="h-4 w-4" />
                 </button>
@@ -172,12 +180,12 @@ export default function ProfilePage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".jpg,.jpeg,.png"
+                accept=".jpg,.jpeg,.png,.webp"
                 onChange={handleFileChange}
                 className="hidden"
               />
               <p className="mt-2 text-xs text-slate-500">
-                JPG/PNG • maksimal 2MB
+                JPG/PNG/WebP • maksimal 2MB
               </p>
             </div>
 
@@ -191,7 +199,7 @@ export default function ProfilePage() {
                 onChange={(e) => setName(e.target.value)}
                 maxLength={100}
                 placeholder="Nama lengkap"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                className="min-h-[44px] w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               />
             </label>
 
@@ -203,14 +211,14 @@ export default function ProfilePage() {
                 type="email"
                 value={user?.email ?? ''}
                 disabled
-                className="w-full cursor-not-allowed rounded-lg border border-slate-800 bg-slate-800/50 px-3 py-2 text-sm text-slate-500 outline-none"
+                className="min-h-[44px] w-full cursor-not-allowed rounded-lg border border-slate-800 bg-slate-800/50 px-3 py-3 text-sm text-slate-500 outline-none"
               />
             </label>
 
             <button
               type="submit"
               disabled={saving}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
@@ -234,7 +242,7 @@ export default function ProfilePage() {
                 onChange={(e) => setOldPassword(e.target.value)}
                 autoComplete="current-password"
                 placeholder="••••••••"
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                className="min-h-[44px] w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               />
             </label>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -248,7 +256,7 @@ export default function ProfilePage() {
                   onChange={(e) => setNewPassword(e.target.value)}
                   autoComplete="new-password"
                   placeholder="Min. 8 karakter"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  className="min-h-[44px] w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
               </label>
               <label className="block">
@@ -261,14 +269,14 @@ export default function ProfilePage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   autoComplete="new-password"
                   placeholder="Ulangi password"
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  className="min-h-[44px] w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                 />
               </label>
             </div>
             <button
               type="submit"
               disabled={changingPassword}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-emerald-500 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-emerald-500 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {changingPassword && <Loader2 className="h-4 w-4 animate-spin" />}
               {changingPassword ? 'Mengganti...' : 'Ganti Password'}
@@ -276,6 +284,7 @@ export default function ProfilePage() {
           </form>
         </div>
       </main>
+      <BottomNav />
     </div>
   )
 }

@@ -92,6 +92,8 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		log.Println("Peringatan: JWT_SECRET kosong — semua request terproteksi akan ditolak (401)")
+	} else if len(jwtSecret) < 32 {
+		log.Println("Peringatan: JWT_SECRET kurang dari 32 karakter — gunakan nilai acak yang lebih panjang")
 	}
 	r.Group(func(r chi.Router) {
 		r.Use(authmw.AuthMiddleware(jwtSecret))

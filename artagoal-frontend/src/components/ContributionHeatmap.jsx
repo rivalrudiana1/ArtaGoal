@@ -128,19 +128,23 @@ export default function ContributionHeatmap({ refreshKey = 0 }) {
         </p>
       </div>
 
-      <div className="mt-4 overflow-x-auto pb-1">
+      <div
+        className="scrollbar-none -mx-1 mt-4 overflow-x-auto scroll-smooth px-1 pt-1 pb-2"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
         {error ? (
           <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-center">
             <p className="text-sm text-red-300">{error}</p>
             <button
               type="button"
               onClick={retry}
-              className="mt-2 rounded-lg bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              className="mt-2 min-h-[44px] rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             >
               Coba lagi
             </button>
           </div>
         ) : (
+          <div className="min-w-[620px] sm:min-w-0">
           <ActivityCalendar
             data={calendarData}
             loading={loading}
@@ -190,6 +194,7 @@ export default function ContributionHeatmap({ refreshKey = 0 }) {
               },
             }}
           />
+          </div>
         )}
       </div>
     </section>

@@ -1,9 +1,19 @@
 import axios from 'axios'
 
-const AUTH_BASE_URL =
-  import.meta.env.VITE_AUTH_API_URL ?? 'http://localhost:8081/api/v1'
-const GOAL_BASE_URL =
-  import.meta.env.VITE_GOAL_API_URL ?? 'http://localhost:8080/api/v1'
+/** Hapus garis miring di akhir agar gabungan `${base}/path` selalu tepat satu `/`. */
+function normalizeBaseUrl(value, fallback) {
+  const raw = String(value || fallback || '').trim() || fallback
+  return raw.replace(/\/+$/, '')
+}
+
+export const AUTH_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_AUTH_API_URL,
+  'http://localhost:8081/api/v1',
+)
+export const GOAL_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_GOAL_API_URL,
+  'http://localhost:8080/api/v1',
+)
 
 export const TOKEN_KEY = 'artagoal_token'
 export const UNAUTH_EVENT = 'artagoal:unauthorized'
@@ -42,8 +52,8 @@ function handleUnauthorized(error) {
   return Promise.reject(error)
 }
 
-function createClient(baseURL) {
-  const client = axios.create({ baseURL, timeout: 15000 })
+function createClient() {
+  const client = axios.create({ timeout: 15000 })
   client.interceptors.request.use(attachAuthHeader)
   client.interceptors.response.use(
     (response) => response,
@@ -52,20 +62,23 @@ function createClient(baseURL) {
   return client
 }
 
-/** auth-service : register, login, me. */
-export const authApi = createClient(AUTH_BASE_URL)
-/** goal-service : goals, contributions, progress, projection. */
-export const goalApi = createClient(GOAL_BASE_URL)
+/** auth-service : register, login, me. URL penuh eksplisit, tanpa mengandalkan baseURL. */
+export const authApi = createClient()
+/** goal-service : goals, contributions, progress, projection. URL penuh eksplisit. */
+export const goalApi = createClient()
 
 export const authService = {
-  register: (payload) => authApi.post('/auth/register', payload),
-  login: (payload) => authApi.post('/auth/login', payload),
-  me: () => authApi.get('/auth/me'),
+  register: (payload) =>
+    authApi.post(`${AUTH_BASE_URL}/auth/register`, payload),
+  login: (payload) => authApi.post(`${AUTH_BASE_URL}/auth/login`, payload),
+  me: () => authApi.get(`${AUTH_BASE_URL}/auth/me`),
   // Header Content-Type multipart/form-data beserta boundary diatur
   // otomatis oleh axios saat body berupa FormData — jangan di-set manual
   // agar browser menyisipkan boundary yang benar.
-  updateProfile: (formData) => authApi.put('/auth/profile', formData),
-  changePassword: (payload) => authApi.put('/auth/password', payload),
+  updateProfile: (formData) =>
+    authApi.put(`${AUTH_BASE_URL}/auth/profile`, formData),
+  changePassword: (payload) =>
+    authApi.put(`${AUTH_BASE_URL}/auth/password`, payload),
 }
 
 /** URL absolut file statis auth-service (mis. avatar) dari path relatifnya. */
@@ -77,28 +90,37 @@ export function authFileUrl(path) {
 }
 
 export const goalService = {
-  listMyGoals: (params) => goalApi.get('/goals', { params }),
-  getGoal: (id) => goalApi.get(`/goals/${id}`),
-  createGoal: (payload) => goalApi.post('/goals', payload),
-  updateGoal: (id, payload) => goalApi.put(`/goals/${id}`, payload),
-  deleteGoal: (id) => goalApi.delete(`/goals/${id}`),
+  listMyGoals: (params) => goalApi.get(`${GOAL_BASE_URL}/goals`, { params }),
+  getGoal: (id) => goalApi.get(`${GOAL_BASE_URL}/goals/${id}`),
+  createGoal: (payload) => goalApi.post(`${GOAL_BASE_URL}/goals`, payload),
+  updateGoal: (id, payload) =>
+    goalApi.put(`${GOAL_BASE_URL}/goals/${id}`, payload),
+  deleteGoal: (id) => goalApi.delete(`${GOAL_BASE_URL}/goals/${id}`),
   addContribution: (goalId, payload) =>
-    goalApi.post(`/goals/${goalId}/contributions`, payload),
+    goalApi.post(`${GOAL_BASE_URL}/goals/${goalId}/contributions`, payload),
   listContributions: (goalId, params) =>
-    goalApi.get(`/goals/${goalId}/contributions`, { params }),
+    goalApi.get(`${GOAL_BASE_URL}/goals/${goalId}/contributions`, { params }),
   deleteContribution: (goalId, contributionId) =>
-    goalApi.delete(`/goals/${goalId}/contributions/${contributionId}`),
-  getProgress: (goalId) => goalApi.get(`/goals/${goalId}/progress`),
-  getProjection: (goalId) => goalApi.get(`/goals/${goalId}/projection`),
-  getHeatmap: () => goalApi.get('/goals/heatmap'),
-  getStats: () => goalApi.get('/goals/stats'),
-  getNotifications: (params) => goalApi.get('/notifications', { params }),
-  markAsRead: (id) => goalApi.put(`/notifications/${id}/read`),
-  getVapidPublicKey: () => goalApi.get('/push/vapid-public-key'),
+    goalApi.delete(
+      `${GOAL_BASE_URL}/goals/${goalId}/contributions/${contributionId}`,
+    ),
+  getProgress: (goalId) =>
+    goalApi.get(`${GOAL_BASE_URL}/goals/${goalId}/progress`),
+  getProjection: (goalId) =>
+    goalApi.get(`${GOAL_BASE_URL}/goals/${goalId}/projection`),
+  getHeatmap: () => goalApi.get(`${GOAL_BASE_URL}/goals/heatmap`),
+  getStats: () => goalApi.get(`${GOAL_BASE_URL}/goals/stats`),
+  getNotifications: (params) =>
+    goalApi.get(`${GOAL_BASE_URL}/notifications`, { params }),
+  markAsRead: (id) => goalApi.put(`${GOAL_BASE_URL}/notifications/${id}/read`),
+  getVapidPublicKey: () =>
+    goalApi.get(`${GOAL_BASE_URL}/push/vapid-public-key`),
   savePushSubscription: (payload) =>
-    goalApi.post('/push/subscriptions', payload),
+    goalApi.post(`${GOAL_BASE_URL}/push/subscriptions`, payload),
   deletePushSubscription: (endpoint) =>
-    goalApi.delete('/push/subscriptions', { data: { endpoint } }),
+    goalApi.delete(`${GOAL_BASE_URL}/push/subscriptions`, {
+      data: { endpoint },
+    }),
 }
 
 /** Ambil pesan error backend {error: "..."} atau fallback generik. */

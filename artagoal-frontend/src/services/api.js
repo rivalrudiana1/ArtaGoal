@@ -49,34 +49,28 @@ function handleUnauthorized(error) {
   return Promise.reject(error)
 }
 
-function createClient() {
-  const client = axios.create({ timeout: 15000 })
-  client.interceptors.request.use(attachAuthHeader)
-  client.interceptors.response.use(
-    (response) => response,
-    handleUnauthorized,
-  )
-  return client
-}
-
-/** auth-service : register, login, me. URL penuh via joinUrl, tanpa baseURL Axios. */
-export const authApi = createClient()
-/** goal-service : goals, contributions, progress, projection. URL penuh via joinUrl. */
-export const goalApi = createClient()
+axios.defaults.timeout = 15000
+axios.interceptors.request.use(attachAuthHeader)
+axios.interceptors.response.use(
+  (response) => response,
+  handleUnauthorized,
+)
 
 export const authService = {
   register: (payload) =>
-    authApi.post(joinUrl(AUTH_BASE_URL, 'auth/register'), payload),
-  login: (payload) =>
-    authApi.post(joinUrl(AUTH_BASE_URL, 'auth/login'), payload),
-  me: () => authApi.get(joinUrl(AUTH_BASE_URL, 'auth/me')),
+    axios.post(joinUrl(AUTH_BASE_URL, 'auth/register'), payload),
+  login: (payload) => {
+    console.log('[DEBUG API] Login URL:', joinUrl(AUTH_BASE_URL, 'auth/login'))
+    return axios.post(joinUrl(AUTH_BASE_URL, 'auth/login'), payload)
+  },
+  me: () => axios.get(joinUrl(AUTH_BASE_URL, 'auth/me')),
   // Header Content-Type multipart/form-data beserta boundary diatur
   // otomatis oleh axios saat body berupa FormData — jangan di-set manual
   // agar browser menyisipkan boundary yang benar.
   updateProfile: (formData) =>
-    authApi.put(joinUrl(AUTH_BASE_URL, 'auth/profile'), formData),
+    axios.put(joinUrl(AUTH_BASE_URL, 'auth/profile'), formData),
   changePassword: (payload) =>
-    authApi.put(joinUrl(AUTH_BASE_URL, 'auth/password'), payload),
+    axios.put(joinUrl(AUTH_BASE_URL, 'auth/password'), payload),
 }
 
 /** URL absolut file statis auth-service (mis. avatar) dari path relatifnya. */
@@ -89,42 +83,42 @@ export function authFileUrl(path) {
 
 export const goalService = {
   listMyGoals: (params) =>
-    goalApi.get(joinUrl(GOAL_BASE_URL, 'goals'), { params }),
-  getGoal: (id) => goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${id}`)),
+    axios.get(joinUrl(GOAL_BASE_URL, 'goals'), { params }),
+  getGoal: (id) => axios.get(joinUrl(GOAL_BASE_URL, `goals/${id}`)),
   createGoal: (payload) =>
-    goalApi.post(joinUrl(GOAL_BASE_URL, 'goals'), payload),
+    axios.post(joinUrl(GOAL_BASE_URL, 'goals'), payload),
   updateGoal: (id, payload) =>
-    goalApi.put(joinUrl(GOAL_BASE_URL, `goals/${id}`), payload),
-  deleteGoal: (id) => goalApi.delete(joinUrl(GOAL_BASE_URL, `goals/${id}`)),
+    axios.put(joinUrl(GOAL_BASE_URL, `goals/${id}`), payload),
+  deleteGoal: (id) => axios.delete(joinUrl(GOAL_BASE_URL, `goals/${id}`)),
   addContribution: (goalId, payload) =>
-    goalApi.post(
+    axios.post(
       joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions`),
       payload,
     ),
   listContributions: (goalId, params) =>
-    goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions`), {
+    axios.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions`), {
       params,
     }),
   deleteContribution: (goalId, contributionId) =>
-    goalApi.delete(
+    axios.delete(
       joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions/${contributionId}`),
     ),
   getProgress: (goalId) =>
-    goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/progress`)),
+    axios.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/progress`)),
   getProjection: (goalId) =>
-    goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/projection`)),
-  getHeatmap: () => goalApi.get(joinUrl(GOAL_BASE_URL, 'goals/heatmap')),
-  getStats: () => goalApi.get(joinUrl(GOAL_BASE_URL, 'goals/stats')),
+    axios.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/projection`)),
+  getHeatmap: () => axios.get(joinUrl(GOAL_BASE_URL, 'goals/heatmap')),
+  getStats: () => axios.get(joinUrl(GOAL_BASE_URL, 'goals/stats')),
   getNotifications: (params) =>
-    goalApi.get(joinUrl(GOAL_BASE_URL, 'notifications'), { params }),
+    axios.get(joinUrl(GOAL_BASE_URL, 'notifications'), { params }),
   markAsRead: (id) =>
-    goalApi.put(joinUrl(GOAL_BASE_URL, `notifications/${id}/read`)),
+    axios.put(joinUrl(GOAL_BASE_URL, `notifications/${id}/read`)),
   getVapidPublicKey: () =>
-    goalApi.get(joinUrl(GOAL_BASE_URL, 'push/vapid-public-key')),
+    axios.get(joinUrl(GOAL_BASE_URL, 'push/vapid-public-key')),
   savePushSubscription: (payload) =>
-    goalApi.post(joinUrl(GOAL_BASE_URL, 'push/subscriptions'), payload),
+    axios.post(joinUrl(GOAL_BASE_URL, 'push/subscriptions'), payload),
   deletePushSubscription: (endpoint) =>
-    goalApi.delete(joinUrl(GOAL_BASE_URL, 'push/subscriptions'), {
+    axios.delete(joinUrl(GOAL_BASE_URL, 'push/subscriptions'), {
       data: { endpoint },
     }),
 }

@@ -85,7 +85,7 @@ export default function ConfirmModal({
             type="button"
             disabled={isLoading}
             onClick={onClose}
-            className="min-h-[48px] flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-12 flex-1 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelText}
           </button>
@@ -93,7 +93,7 @@ export default function ConfirmModal({
             type="button"
             disabled={isLoading}
             onClick={onConfirm}
-            className={`flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${config.confirmButton}`}
+            className={`flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white transition focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${config.confirmButton}`}
           >
             {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             {confirmText}

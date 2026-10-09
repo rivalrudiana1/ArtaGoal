@@ -1,19 +1,16 @@
 import axios from 'axios'
 
-/** Hapus garis miring di akhir agar gabungan `${base}/path` selalu tepat satu `/`. */
-function normalizeBaseUrl(value, fallback) {
-  const raw = String(value || fallback || '').trim() || fallback
-  return raw.replace(/\/+$/, '')
+const joinUrl = (baseUrl, endpoint) => {
+  if (!baseUrl) return endpoint
+  const cleanBase = baseUrl.replace(/\/+$/, '')
+  const cleanEndpoint = endpoint.replace(/^\/+/, '')
+  return `${cleanBase}/${cleanEndpoint}`
 }
 
-export const AUTH_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_AUTH_API_URL,
-  'http://localhost:8081/api/v1',
-)
-export const GOAL_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_GOAL_API_URL,
-  'http://localhost:8080/api/v1',
-)
+const AUTH_BASE_URL =
+  import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8081/api/v1'
+const GOAL_BASE_URL =
+  import.meta.env.VITE_GOAL_API_URL || 'http://localhost:8080/api/v1'
 
 export const TOKEN_KEY = 'artagoal_token'
 export const UNAUTH_EVENT = 'artagoal:unauthorized'
@@ -62,23 +59,24 @@ function createClient() {
   return client
 }
 
-/** auth-service : register, login, me. URL penuh eksplisit, tanpa mengandalkan baseURL. */
+/** auth-service : register, login, me. URL penuh via joinUrl, tanpa baseURL Axios. */
 export const authApi = createClient()
-/** goal-service : goals, contributions, progress, projection. URL penuh eksplisit. */
+/** goal-service : goals, contributions, progress, projection. URL penuh via joinUrl. */
 export const goalApi = createClient()
 
 export const authService = {
   register: (payload) =>
-    authApi.post(`${AUTH_BASE_URL}/auth/register`, payload),
-  login: (payload) => authApi.post(`${AUTH_BASE_URL}/auth/login`, payload),
-  me: () => authApi.get(`${AUTH_BASE_URL}/auth/me`),
+    authApi.post(joinUrl(AUTH_BASE_URL, 'auth/register'), payload),
+  login: (payload) =>
+    authApi.post(joinUrl(AUTH_BASE_URL, 'auth/login'), payload),
+  me: () => authApi.get(joinUrl(AUTH_BASE_URL, 'auth/me')),
   // Header Content-Type multipart/form-data beserta boundary diatur
   // otomatis oleh axios saat body berupa FormData — jangan di-set manual
   // agar browser menyisipkan boundary yang benar.
   updateProfile: (formData) =>
-    authApi.put(`${AUTH_BASE_URL}/auth/profile`, formData),
+    authApi.put(joinUrl(AUTH_BASE_URL, 'auth/profile'), formData),
   changePassword: (payload) =>
-    authApi.put(`${AUTH_BASE_URL}/auth/password`, payload),
+    authApi.put(joinUrl(AUTH_BASE_URL, 'auth/password'), payload),
 }
 
 /** URL absolut file statis auth-service (mis. avatar) dari path relatifnya. */
@@ -90,35 +88,43 @@ export function authFileUrl(path) {
 }
 
 export const goalService = {
-  listMyGoals: (params) => goalApi.get(`${GOAL_BASE_URL}/goals`, { params }),
-  getGoal: (id) => goalApi.get(`${GOAL_BASE_URL}/goals/${id}`),
-  createGoal: (payload) => goalApi.post(`${GOAL_BASE_URL}/goals`, payload),
+  listMyGoals: (params) =>
+    goalApi.get(joinUrl(GOAL_BASE_URL, 'goals'), { params }),
+  getGoal: (id) => goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${id}`)),
+  createGoal: (payload) =>
+    goalApi.post(joinUrl(GOAL_BASE_URL, 'goals'), payload),
   updateGoal: (id, payload) =>
-    goalApi.put(`${GOAL_BASE_URL}/goals/${id}`, payload),
-  deleteGoal: (id) => goalApi.delete(`${GOAL_BASE_URL}/goals/${id}`),
+    goalApi.put(joinUrl(GOAL_BASE_URL, `goals/${id}`), payload),
+  deleteGoal: (id) => goalApi.delete(joinUrl(GOAL_BASE_URL, `goals/${id}`)),
   addContribution: (goalId, payload) =>
-    goalApi.post(`${GOAL_BASE_URL}/goals/${goalId}/contributions`, payload),
+    goalApi.post(
+      joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions`),
+      payload,
+    ),
   listContributions: (goalId, params) =>
-    goalApi.get(`${GOAL_BASE_URL}/goals/${goalId}/contributions`, { params }),
+    goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions`), {
+      params,
+    }),
   deleteContribution: (goalId, contributionId) =>
     goalApi.delete(
-      `${GOAL_BASE_URL}/goals/${goalId}/contributions/${contributionId}`,
+      joinUrl(GOAL_BASE_URL, `goals/${goalId}/contributions/${contributionId}`),
     ),
   getProgress: (goalId) =>
-    goalApi.get(`${GOAL_BASE_URL}/goals/${goalId}/progress`),
+    goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/progress`)),
   getProjection: (goalId) =>
-    goalApi.get(`${GOAL_BASE_URL}/goals/${goalId}/projection`),
-  getHeatmap: () => goalApi.get(`${GOAL_BASE_URL}/goals/heatmap`),
-  getStats: () => goalApi.get(`${GOAL_BASE_URL}/goals/stats`),
+    goalApi.get(joinUrl(GOAL_BASE_URL, `goals/${goalId}/projection`)),
+  getHeatmap: () => goalApi.get(joinUrl(GOAL_BASE_URL, 'goals/heatmap')),
+  getStats: () => goalApi.get(joinUrl(GOAL_BASE_URL, 'goals/stats')),
   getNotifications: (params) =>
-    goalApi.get(`${GOAL_BASE_URL}/notifications`, { params }),
-  markAsRead: (id) => goalApi.put(`${GOAL_BASE_URL}/notifications/${id}/read`),
+    goalApi.get(joinUrl(GOAL_BASE_URL, 'notifications'), { params }),
+  markAsRead: (id) =>
+    goalApi.put(joinUrl(GOAL_BASE_URL, `notifications/${id}/read`)),
   getVapidPublicKey: () =>
-    goalApi.get(`${GOAL_BASE_URL}/push/vapid-public-key`),
+    goalApi.get(joinUrl(GOAL_BASE_URL, 'push/vapid-public-key')),
   savePushSubscription: (payload) =>
-    goalApi.post(`${GOAL_BASE_URL}/push/subscriptions`, payload),
+    goalApi.post(joinUrl(GOAL_BASE_URL, 'push/subscriptions'), payload),
   deletePushSubscription: (endpoint) =>
-    goalApi.delete(`${GOAL_BASE_URL}/push/subscriptions`, {
+    goalApi.delete(joinUrl(GOAL_BASE_URL, 'push/subscriptions'), {
       data: { endpoint },
     }),
 }

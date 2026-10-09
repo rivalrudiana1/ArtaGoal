@@ -11,6 +11,6 @@ require (
 )
 
 require (
-	github.com/SherClockHolmes/webpush-go v1.4.0 // indirect
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	golang.org/x/crypto v0.31.0 // indirect
 )

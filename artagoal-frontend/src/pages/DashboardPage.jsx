@@ -88,7 +88,7 @@ function SummaryCard({ icon, label, value, accent }) {
 }
 
 const selectClass =
-  'min-h-[44px] w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-500'
+  'min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-emerald-500'
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -231,7 +231,7 @@ export default function DashboardPage() {
               to="/profile"
               title="Profil saya"
               aria-label="Profil saya"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-emerald-500 focus-visible:ring-emerald-500 focus-visible:outline-none"
+              className="flex min-h-11 min-w-11 items-center justify-center overflow-hidden rounded-full ring-2 ring-transparent transition hover:ring-emerald-500 focus-visible:ring-emerald-500 focus-visible:outline-none"
             >
               {authFileUrl(user?.avatar_url) ? (
                 <img
@@ -250,7 +250,7 @@ export default function DashboardPage() {
               onClick={() => setLogoutOpen(true)}
               title="Keluar"
               aria-label="Keluar dari akun"
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 sm:px-4 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-500 dark:hover:text-red-400"
+              className="flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:border-red-200 hover:text-red-600 sm:px-4 dark:border-slate-700 dark:text-slate-300 dark:hover:border-red-500 dark:hover:text-red-400"
             >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Keluar</span>
@@ -284,13 +284,13 @@ export default function DashboardPage() {
               type="button"
               onClick={handleExport}
               disabled={loading || goals.length === 0}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
             >
               <Download className="h-4 w-4" /> Export Laporan (.csv)
             </button>
             <Link
               to="/goals/new"
-              className="flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" /> Target Baru
             </Link>
@@ -337,7 +337,7 @@ export default function DashboardPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari target berdasarkan judul..."
-                className="min-h-[44px] w-full rounded-lg border border-slate-300 bg-white py-3 pr-3 pl-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
+                className="min-h-11 w-full rounded-lg border border-slate-300 bg-white py-3 pr-3 pl-10 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </label>
             <label className="block">
@@ -398,7 +398,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="min-h-[44px] px-2 py-2 font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="min-h-11 px-2 py-2 font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 Reset filter
               </button>
@@ -416,7 +416,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={fetchGoals}
-              className="mt-3 min-h-[44px] rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none dark:bg-red-600 dark:hover:bg-red-500"
+              className="mt-3 min-h-11 rounded-lg bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-500 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none dark:bg-red-600 dark:hover:bg-red-500"
             >
               Coba lagi
             </button>
@@ -430,7 +430,7 @@ export default function DashboardPage() {
             </p>
             <Link
               to="/goals/new"
-              className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               <Plus className="h-4 w-4" /> Buat Target
             </Link>
@@ -449,7 +449,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={resetFilters}
-              className="mt-4 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
+              className="mt-4 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
             >
               Reset pencarian & filter
             </button>

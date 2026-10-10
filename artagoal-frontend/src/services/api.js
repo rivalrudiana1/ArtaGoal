@@ -72,7 +72,18 @@ axios.defaults.timeout = 15000
 axios.interceptors.request.use(attachAuthHeader)
 axios.interceptors.response.use(
   (response) => response,
-  handleUnauthorized,
+  async (error) => {
+    // Auto-retry 1x untuk cold start / DB timeout: status 500 atau
+    // network error (tanpa response). Tunggu 800ms sebelum mencoba lagi.
+    const { config, response } = error
+    const retryable = !response || response.status === 500
+    if (config && retryable && !config._retry) {
+      config._retry = true
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      return axios(config)
+    }
+    return handleUnauthorized(error)
+  },
 )
 
 export const authService = {

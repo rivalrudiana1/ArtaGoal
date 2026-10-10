@@ -48,11 +48,20 @@ describe('axios auto-retry interceptor', () => {
     expect(f.calls()).toBe(2)
   })
 
-  it('menyerah setelah 1x retry (total 2 request)', async () => {
+  it('mencoba ulang hingga sukses pada kegagalan ke-2 (total 3 request)', async () => {
+    const f = flakyAdapter(2)
+    const res = await axios.get('http://localhost:1/retry-twice', {
+      adapter: f.adapter,
+    })
+    expect(res.data).toEqual({ ok: true })
+    expect(f.calls()).toBe(3)
+  })
+
+  it('menyerah setelah 3x retry (total 4 request)', async () => {
     const f = flakyAdapter(99)
     await expect(
       axios.get('http://localhost:1/retry-fail', { adapter: f.adapter }),
     ).rejects.toThrow()
-    expect(f.calls()).toBe(2)
+    expect(f.calls()).toBe(4)
   })
 })

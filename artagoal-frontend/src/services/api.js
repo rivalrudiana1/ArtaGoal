@@ -73,13 +73,15 @@ axios.interceptors.request.use(attachAuthHeader)
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Auto-retry 1x untuk cold start / DB timeout: status 500 atau
-    // network error (tanpa response). Tunggu 800ms sebelum mencoba lagi.
+    // Silent auto-retry untuk cold start / DB timeout: status 500 atau
+    // network error (tanpa response). Maksimal 3x percobaan ulang dengan
+    // jeda 500ms, sebelum error diteruskan ke UI (tanpa tombol "Coba lagi").
     const { config, response } = error
     const retryable = !response || response.status === 500
-    if (config && retryable && !config._retry) {
-      config._retry = true
-      await new Promise((resolve) => setTimeout(resolve, 800))
+    const retryCount = (config && config._retryCount) || 0
+    if (config && retryable && retryCount < 3) {
+      config._retryCount = retryCount + 1
+      await new Promise((resolve) => setTimeout(resolve, 500))
       return axios(config)
     }
     return handleUnauthorized(error)
